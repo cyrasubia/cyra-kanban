@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  min-height: 100vh;
+}
+
+.task-card {
+  @apply bg-slate-800 border border-slate-700 rounded-lg p-3 mb-2 cursor-grab active:cursor-grabbing shadow-md hover:shadow-lg transition-all;
+}
+
+.task-card:hover {
+  @apply border-cyan-500/50;
+}
+
+.column {
+  @apply bg-slate-900/50 backdrop-blur-sm rounded-xl p-4 min-h-[500px] border border-slate-800;
+}
+
+.column-header {
+  @apply text-lg font-semibold mb-4 pb-2 border-b border-slate-700;
+}
+
+.add-task-btn {
+  @apply w-full py-2 mt-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 rounded-lg transition-all text-sm;
+}
