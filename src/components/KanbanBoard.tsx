@@ -6,7 +6,7 @@ type Task = {
   id: string
   title: string
   description?: string
-  column: 'inbox' | 'working' | 'review' | 'done'
+  column: 'inbox' | 'working' | 'blocked' | 'review' | 'done'
   priority?: 'low' | 'medium' | 'high'
   project?: string
   createdAt: number
@@ -36,8 +36,9 @@ type Note = {
 }
 
 const columns = [
-  { id: 'inbox' as const, title: '📥 Inbox', description: 'New tasks from Victor' },
+  { id: 'inbox' as const, title: '📥 Inbox', description: 'New tasks' },
   { id: 'working' as const, title: '⚡ Working', description: 'Cyra is on it' },
+  { id: 'blocked' as const, title: '🙋 Needs Victor', description: 'Waiting on Victor' },
   { id: 'review' as const, title: '👀 Review', description: 'Needs approval' },
   { id: 'done' as const, title: '✅ Done', description: 'Completed' },
 ]
@@ -187,7 +188,7 @@ export default function KanbanBoard() {
       <div className="grid grid-cols-12 gap-6">
         {/* Main Kanban - 8 cols */}
         <div className="col-span-12 lg:col-span-8">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-3">
             {columns.map(column => {
               const columnTasks = tasks.filter(t => t.column === column.id)
               return (
@@ -313,23 +314,27 @@ export default function KanbanBoard() {
           {/* Stats */}
           <div className="bg-slate-900 rounded-xl p-4">
             <h3 className="font-medium text-sm mb-3 text-slate-300">📊 Overview</h3>
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="bg-slate-800 rounded-lg p-3">
-                <div className="text-2xl font-bold text-cyan-400">{tasks.filter(t => t.column === 'inbox').length}</div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="bg-slate-800 rounded-lg p-2">
+                <div className="text-xl font-bold text-cyan-400">{tasks.filter(t => t.column === 'inbox').length}</div>
                 <div className="text-xs text-slate-500">Inbox</div>
               </div>
-              <div className="bg-slate-800 rounded-lg p-3">
-                <div className="text-2xl font-bold text-yellow-400">{tasks.filter(t => t.column === 'working').length}</div>
+              <div className="bg-slate-800 rounded-lg p-2">
+                <div className="text-xl font-bold text-yellow-400">{tasks.filter(t => t.column === 'working').length}</div>
                 <div className="text-xs text-slate-500">Working</div>
               </div>
-              <div className="bg-slate-800 rounded-lg p-3">
-                <div className="text-2xl font-bold text-purple-400">{tasks.filter(t => t.column === 'review').length}</div>
+              <div className="bg-slate-800 rounded-lg p-2">
+                <div className="text-xl font-bold text-orange-400">{tasks.filter(t => t.column === 'blocked').length}</div>
+                <div className="text-xs text-slate-500">Needs You</div>
+              </div>
+              <div className="bg-slate-800 rounded-lg p-2">
+                <div className="text-xl font-bold text-purple-400">{tasks.filter(t => t.column === 'review').length}</div>
                 <div className="text-xs text-slate-500">Review</div>
               </div>
-              <div className="bg-slate-800 rounded-lg p-3">
-                <div className="text-2xl font-bold text-green-400">{tasks.filter(t => t.column === 'done').length}</div>
-                <div className="text-xs text-slate-500">Done</div>
-              </div>
+            </div>
+            <div className="mt-2 bg-slate-800 rounded-lg p-2 text-center">
+              <div className="text-xl font-bold text-green-400">{tasks.filter(t => t.column === 'done').length}</div>
+              <div className="text-xs text-slate-500">Done</div>
             </div>
           </div>
         </div>

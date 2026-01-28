@@ -4,7 +4,7 @@ export type Task = {
   id: string
   title: string
   description?: string
-  column: 'inbox' | 'working' | 'review' | 'done'
+  column: 'inbox' | 'working' | 'blocked' | 'review' | 'done'
   priority?: 'low' | 'medium' | 'high'
   project?: string
   createdAt: number
