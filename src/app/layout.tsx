@@ -1,9 +1,9 @@
-import './globals.css'
 import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Cyra Kanban',
-  description: 'Task tracker for Cyra and Victor',
+  title: 'Cyra Command Center',
+  description: 'AI Operations Dashboard for Victor',
 }
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="text-white">{children}</body>
+      <body>{children}</body>
     </html>
   )
 }
