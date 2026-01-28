@@ -52,6 +52,257 @@ const statusConfig = {
   thinking: { emoji: '🔵', label: 'Thinking', color: 'text-blue-400' },
 }
 
+const priorityColors = {
+  high: 'border-l-red-500',
+  medium: 'border-l-yellow-500',
+  low: 'border-l-green-500',
+}
+
+const priorityLabels = {
+  high: { label: 'High', color: 'text-red-400', bg: 'bg-red-500/20' },
+  medium: { label: 'Medium', color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+  low: { label: 'Low', color: 'text-green-400', bg: 'bg-green-500/20' },
+}
+
+// Task Details Modal Component
+function TaskModal({ 
+  task, 
+  onClose, 
+  onUpdate, 
+  onDelete, 
+  onMove 
+}: { 
+  task: Task
+  onClose: () => void
+  onUpdate: (id: string, updates: Partial<Task>) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  onMove: (id: string, column: string) => Promise<void>
+}) {
+  const [title, setTitle] = useState(task.title)
+  const [description, setDescription] = useState(task.description || '')
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium')
+  const [saving, setSaving] = useState(false)
+  
+  const handleSave = async () => {
+    setSaving(true)
+    await onUpdate(task.id, { title, description, priority })
+    setSaving(false)
+    onClose()
+  }
+  
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      await onDelete(task.id)
+      onClose()
+    }
+  }
+  
+  const formatDate = (timestamp: string) => {
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+  
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div 
+        className="bg-slate-900 rounded-xl w-full max-w-lg border border-slate-700 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b border-slate-700">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
+            <span className="text-slate-400 text-sm">Task Details</span>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl">×</button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Title */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500"
+            />
+          </div>
+          
+          {/* Description */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Add description..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 resize-none h-24"
+            />
+          </div>
+          
+          {/* Priority */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Priority</label>
+            <div className="flex gap-2">
+              {(['low', 'medium', 'high'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPriority(p)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    priority === p 
+                      ? `${priorityLabels[p].bg} ${priorityLabels[p].color} border border-current`
+                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {priorityLabels[p].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Move to Column */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Move to Column</label>
+            <select
+              value={task.column_id}
+              onChange={e => {
+                onMove(task.id, e.target.value)
+                onClose()
+              }}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500"
+            >
+              {columns.map(col => (
+                <option key={col.id} value={col.id}>{col.title}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Created Date */}
+          <div className="text-xs text-slate-500">
+            Created: {formatDate(task.created_at)}
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="flex gap-2 p-4 border-t border-slate-700">
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg text-sm transition-colors"
+          >
+            Delete
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !title.trim()}
+            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg text-sm transition-colors"
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Task Card Component with hover actions
+function TaskCard({ 
+  task, 
+  onDragStart, 
+  onClick,
+  onMarkDone,
+  onMoveToBlocked,
+  onDelete,
+  formatTime 
+}: {
+  task: Task
+  onDragStart: () => void
+  onClick: () => void
+  onMarkDone: () => void
+  onMoveToBlocked: () => void
+  onDelete: () => void
+  formatTime: (timestamp: string) => string
+}) {
+  const [showActions, setShowActions] = useState(false)
+  const priorityClass = task.priority ? priorityColors[task.priority] : 'border-l-slate-600'
+  
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+      onClick={onClick}
+      className={`bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${priorityClass} border border-slate-700 hover:border-cyan-500/50 transition-all relative`}
+    >
+      <div className="flex justify-between items-start">
+        <span className="text-sm pr-6">{task.title}</span>
+      </div>
+      
+      {task.description && (
+        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
+      )}
+      
+      <div className="flex gap-2 mt-2 text-xs text-slate-500">
+        <span>{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
+        <span>{formatTime(task.created_at)}</span>
+        {task.priority && (
+          <span className={`${priorityLabels[task.priority].color} text-[10px] px-1.5 rounded ${priorityLabels[task.priority].bg}`}>
+            {task.priority}
+          </span>
+        )}
+      </div>
+      
+      {/* Quick Hover Actions */}
+      {showActions && (
+        <div 
+          className="absolute top-2 right-2 flex gap-1"
+          onClick={e => e.stopPropagation()}
+        >
+          {task.column_id !== 'done' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+              className="p-1.5 bg-green-600/80 hover:bg-green-500 rounded text-[10px] text-white transition-colors"
+              title="Mark Done"
+            >
+              ✓
+            </button>
+          )}
+          {task.column_id !== 'blocked' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onMoveToBlocked(); }}
+              className="p-1.5 bg-orange-600/80 hover:bg-orange-500 rounded text-[10px] text-white transition-colors"
+              title="Move to Blocked"
+            >
+              🙋
+            </button>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-1.5 bg-red-600/80 hover:bg-red-500 rounded text-[10px] text-white transition-colors"
+            title="Delete"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function KanbanBoard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [logs, setLogs] = useState<LogEntry[]>([])
@@ -63,6 +314,7 @@ export default function KanbanBoard() {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   
   const supabase = createClient()
   const router = useRouter()
@@ -136,6 +388,7 @@ export default function KanbanBoard() {
       title: newTaskTitle.trim(),
       column_id: columnId,
       position: maxPosition + 1,
+      priority: 'medium',
       created_by: 'victor'
     })
     
@@ -159,6 +412,11 @@ export default function KanbanBoard() {
 
   const deleteTask = async (taskId: string) => {
     await supabase.from('tasks').delete().eq('id', taskId)
+    fetchData()
+  }
+  
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    await supabase.from('tasks').update(updates).eq('id', taskId)
     fetchData()
   }
 
@@ -207,6 +465,17 @@ export default function KanbanBoard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={updateTask}
+          onDelete={deleteTask}
+          onMove={moveTask}
+        />
+      )}
+      
       {/* Header */}
       <header className="mb-6 flex justify-between items-center">
         <div>
@@ -250,26 +519,20 @@ export default function KanbanBoard() {
 
                   <div className="space-y-2 min-h-[200px]">
                     {columnTasks.map(task => (
-                      <div
+                      <TaskCard
                         key={task.id}
-                        draggable
+                        task={task}
                         onDragStart={() => setDraggedTask(task)}
-                        className="bg-slate-800 rounded-lg p-3 cursor-move hover:bg-slate-750 group border border-slate-700 hover:border-cyan-500/50 transition-colors"
-                      >
-                        <div className="flex justify-between items-start">
-                          <span className="text-sm">{task.title}</span>
-                          <button
-                            onClick={() => deleteTask(task.id)}
-                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="flex gap-2 mt-2 text-xs text-slate-500">
-                          <span>{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
-                          <span>{formatTime(task.created_at)}</span>
-                        </div>
-                      </div>
+                        onClick={() => setSelectedTask(task)}
+                        onMarkDone={() => moveTask(task.id, 'done')}
+                        onMoveToBlocked={() => moveTask(task.id, 'blocked')}
+                        onDelete={() => {
+                          if (confirm('Delete this task?')) {
+                            deleteTask(task.id)
+                          }
+                        }}
+                        formatTime={formatTime}
+                      />
                     ))}
                   </div>
 
