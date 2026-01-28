@@ -1,46 +1,49 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 type Task = {
   id: string
   title: string
   description?: string
-  column: 'inbox' | 'working' | 'blocked' | 'review' | 'done'
+  column_id: string
   priority?: 'low' | 'medium' | 'high'
   project?: string
-  createdAt: number
-  updatedAt: number
-  createdBy: 'victor' | 'cyra'
+  position: number
+  created_at: string
+  updated_at: string
+  created_by: 'victor' | 'cyra'
 }
 
 type LogEntry = {
   id: string
   action: string
   details?: string
-  timestamp: number
+  created_at: string
 }
 
 type Status = {
   state: 'idle' | 'working' | 'thinking'
-  task: string | null
-  updatedAt: number
+  current_task: string | null
+  updated_at: string
 }
 
 type Note = {
   id: string
   content: string
-  from: 'victor' | 'cyra'
+  from_user: 'victor' | 'cyra'
   read: boolean
-  createdAt: number
+  created_at: string
 }
 
 const columns = [
-  { id: 'inbox' as const, title: '📥 Inbox', description: 'New tasks' },
-  { id: 'working' as const, title: '⚡ Working', description: 'Cyra is on it' },
-  { id: 'blocked' as const, title: '🙋 Needs Victor', description: 'Waiting on Victor' },
-  { id: 'review' as const, title: '👀 Review', description: 'Needs approval' },
-  { id: 'done' as const, title: '✅ Done', description: 'Completed' },
+  { id: 'inbox', title: '📥 Inbox', description: 'New tasks' },
+  { id: 'working', title: '⚡ Working', description: 'Cyra is on it' },
+  { id: 'blocked', title: '🙋 Needs Victor', description: 'Waiting on Victor' },
+  { id: 'review', title: '👀 Review', description: 'Needs approval' },
+  { id: 'done', title: '✅ Done', description: 'Completed' },
 ]
 
 const statusConfig = {
@@ -52,118 +55,152 @@ const statusConfig = {
 export default function KanbanBoard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [status, setStatus] = useState<Status>({ state: 'idle', task: null, updatedAt: Date.now() })
+  const [status, setStatus] = useState<Status>({ state: 'idle', current_task: null, updated_at: new Date().toISOString() })
   const [notes, setNotes] = useState<Note[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newNote, setNewNote] = useState('')
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  
+  const supabase = createClient()
+  const router = useRouter()
+
+  // Check auth and fetch initial data
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+      setUser(user)
+      setLoading(false)
+    }
+    checkAuth()
+  }, [router, supabase.auth])
 
   // Fetch all data
   const fetchData = useCallback(async () => {
+    if (!user) return
+
     try {
       const [tasksRes, logsRes, statusRes, notesRes] = await Promise.all([
-        fetch('/api/tasks'),
-        fetch('/api/logs?limit=20'),
-        fetch('/api/status'),
-        fetch('/api/notes'),
+        supabase.from('tasks').select('*').eq('user_id', user.id).order('position'),
+        supabase.from('logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('status').select('*').eq('user_id', user.id).single(),
+        supabase.from('notes').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       ])
-      
-      const tasksData = await tasksRes.json()
-      const logsData = await logsRes.json()
-      const statusData = await statusRes.json()
-      const notesData = await notesRes.json()
-      
-      setTasks(tasksData.tasks || [])
-      setLogs(logsData.logs || [])
-      setStatus(statusData)
-      setNotes(notesData.notes || [])
+
+      if (tasksRes.data) setTasks(tasksRes.data)
+      if (logsRes.data) setLogs(logsRes.data)
+      if (statusRes.data) setStatus(statusRes.data)
+      if (notesRes.data) setNotes(notesRes.data)
     } catch (e) {
       console.error('Failed to fetch data:', e)
     }
-  }, [])
+  }, [user, supabase])
 
   useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 5000) // Poll every 5s
-    return () => clearInterval(interval)
-  }, [fetchData])
+    if (user) {
+      fetchData()
+      const interval = setInterval(fetchData, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [user, fetchData])
+
+  // Subscribe to realtime changes
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `user_id=eq.${user.id}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'status', filter: `user_id=eq.${user.id}` }, fetchData)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user, supabase, fetchData])
 
   const addTask = async (columnId: string) => {
-    if (!newTaskTitle.trim()) return
+    if (!newTaskTitle.trim() || !user) return
     
-    try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newTaskTitle.trim(),
-          column: columnId,
-          createdBy: 'victor'
-        })
-      })
-      
-      if (res.ok) {
-        setNewTaskTitle('')
-        setAddingToColumn(null)
-        fetchData()
-      }
-    } catch (e) {
-      console.error('Failed to add task:', e)
+    const maxPosition = Math.max(0, ...tasks.filter(t => t.column_id === columnId).map(t => t.position))
+    
+    const { error } = await supabase.from('tasks').insert({
+      user_id: user.id,
+      title: newTaskTitle.trim(),
+      column_id: columnId,
+      position: maxPosition + 1,
+      created_by: 'victor'
+    })
+    
+    if (!error) {
+      setNewTaskTitle('')
+      setAddingToColumn(null)
+      fetchData()
     }
   }
 
   const moveTask = async (taskId: string, toColumn: string) => {
-    try {
-      await fetch('/api/tasks', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: taskId, column: toColumn })
-      })
-      fetchData()
-    } catch (e) {
-      console.error('Failed to move task:', e)
-    }
+    const maxPosition = Math.max(0, ...tasks.filter(t => t.column_id === toColumn).map(t => t.position))
+    
+    await supabase.from('tasks').update({ 
+      column_id: toColumn,
+      position: maxPosition + 1 
+    }).eq('id', taskId)
+    
+    fetchData()
   }
 
   const deleteTask = async (taskId: string) => {
-    try {
-      await fetch(`/api/tasks?id=${taskId}`, { method: 'DELETE' })
-      fetchData()
-    } catch (e) {
-      console.error('Failed to delete task:', e)
-    }
+    await supabase.from('tasks').delete().eq('id', taskId)
+    fetchData()
   }
 
   const addNote = async () => {
-    if (!newNote.trim()) return
+    if (!newNote.trim() || !user) return
     
-    try {
-      await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newNote.trim(), from: 'victor' })
-      })
-      setNewNote('')
-      fetchData()
-    } catch (e) {
-      console.error('Failed to add note:', e)
-    }
+    await supabase.from('notes').insert({
+      user_id: user.id,
+      content: newNote.trim(),
+      from_user: 'victor'
+    })
+    
+    setNewNote('')
+    fetchData()
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
   }
 
   const handleDrop = (columnId: string) => {
-    if (draggedTask && draggedTask.column !== columnId) {
+    if (draggedTask && draggedTask.column_id !== columnId) {
       moveTask(draggedTask.id, columnId)
     }
     setDraggedTask(null)
   }
 
-  const formatTime = (timestamp: number) => {
-    const diff = Date.now() - timestamp
+  const formatTime = (timestamp: string) => {
+    const diff = Date.now() - new Date(timestamp).getTime()
     if (diff < 60000) return 'just now'
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
     return new Date(timestamp).toLocaleDateString()
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-cyan-400 text-xl">Loading...</div>
+      </div>
+    )
   }
 
   const statusInfo = statusConfig[status.state]
@@ -176,12 +213,20 @@ export default function KanbanBoard() {
           <h1 className="text-2xl font-bold text-cyan-400">✨ Cyra Command Center</h1>
           <p className="text-slate-500 text-sm">Victor's AI Operations Dashboard</p>
         </div>
-        <div className={`flex items-center gap-2 px-4 py-2 bg-slate-900 rounded-lg ${statusInfo.color}`}>
-          <span className="text-xl">{statusInfo.emoji}</span>
-          <div>
-            <div className="font-medium">{statusInfo.label}</div>
-            {status.task && <div className="text-xs text-slate-400">{status.task}</div>}
+        <div className="flex items-center gap-4">
+          <div className={`flex items-center gap-2 px-4 py-2 bg-slate-900 rounded-lg ${statusInfo.color}`}>
+            <span className="text-xl">{statusInfo.emoji}</span>
+            <div>
+              <div className="font-medium">{statusInfo.label}</div>
+              {status.current_task && <div className="text-xs text-slate-400">{status.current_task}</div>}
+            </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm text-slate-400 hover:text-white bg-slate-900 rounded-lg transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </header>
 
@@ -190,7 +235,7 @@ export default function KanbanBoard() {
         <div className="col-span-12 lg:col-span-8">
           <div className="grid grid-cols-5 gap-3">
             {columns.map(column => {
-              const columnTasks = tasks.filter(t => t.column === column.id)
+              const columnTasks = tasks.filter(t => t.column_id === column.id)
               return (
                 <div
                   key={column.id}
@@ -221,8 +266,8 @@ export default function KanbanBoard() {
                           </button>
                         </div>
                         <div className="flex gap-2 mt-2 text-xs text-slate-500">
-                          <span>{task.createdBy === 'cyra' ? '🤖' : '👤'}</span>
-                          <span>{formatTime(task.createdAt)}</span>
+                          <span>{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
+                          <span>{formatTime(task.created_at)}</span>
                         </div>
                       </div>
                     ))}
@@ -286,7 +331,7 @@ export default function KanbanBoard() {
               <div className="mt-3 space-y-2">
                 {notes.filter(n => !n.read).slice(0, 3).map(note => (
                   <div key={note.id} className="text-xs bg-slate-800 p-2 rounded border-l-2 border-cyan-500">
-                    <span className="text-slate-400">{note.from === 'cyra' ? '🤖' : '👤'}</span> {note.content}
+                    <span className="text-slate-400">{note.from_user === 'cyra' ? '🤖' : '👤'}</span> {note.content}
                   </div>
                 ))}
               </div>
@@ -300,11 +345,11 @@ export default function KanbanBoard() {
               {logs.length === 0 ? (
                 <p className="text-xs text-slate-500">No actions logged yet</p>
               ) : (
-                logs.slice().reverse().map(log => (
+                logs.map(log => (
                   <div key={log.id} className="text-xs border-l-2 border-slate-700 pl-3 py-1">
                     <div className="text-slate-300">{log.action}</div>
                     {log.details && <div className="text-slate-500">{log.details}</div>}
-                    <div className="text-slate-600">{formatTime(log.timestamp)}</div>
+                    <div className="text-slate-600">{formatTime(log.created_at)}</div>
                   </div>
                 ))
               )}
@@ -316,24 +361,24 @@ export default function KanbanBoard() {
             <h3 className="font-medium text-sm mb-3 text-slate-300">📊 Overview</h3>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-cyan-400">{tasks.filter(t => t.column === 'inbox').length}</div>
+                <div className="text-xl font-bold text-cyan-400">{tasks.filter(t => t.column_id === 'inbox').length}</div>
                 <div className="text-xs text-slate-500">Inbox</div>
               </div>
               <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-yellow-400">{tasks.filter(t => t.column === 'working').length}</div>
+                <div className="text-xl font-bold text-yellow-400">{tasks.filter(t => t.column_id === 'working').length}</div>
                 <div className="text-xs text-slate-500">Working</div>
               </div>
               <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-orange-400">{tasks.filter(t => t.column === 'blocked').length}</div>
+                <div className="text-xl font-bold text-orange-400">{tasks.filter(t => t.column_id === 'blocked').length}</div>
                 <div className="text-xs text-slate-500">Needs You</div>
               </div>
               <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-purple-400">{tasks.filter(t => t.column === 'review').length}</div>
+                <div className="text-xl font-bold text-purple-400">{tasks.filter(t => t.column_id === 'review').length}</div>
                 <div className="text-xs text-slate-500">Review</div>
               </div>
             </div>
             <div className="mt-2 bg-slate-800 rounded-lg p-2 text-center">
-              <div className="text-xl font-bold text-green-400">{tasks.filter(t => t.column === 'done').length}</div>
+              <div className="text-xl font-bold text-green-400">{tasks.filter(t => t.column_id === 'done').length}</div>
               <div className="text-xs text-slate-500">Done</div>
             </div>
           </div>
