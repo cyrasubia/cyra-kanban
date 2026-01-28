@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-// Use service role key to bypass RLS for Cyra agent
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Lazy initialization to avoid build-time errors
+function getSupabase(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!url || !key) {
+    throw new Error('Supabase environment variables not configured')
+  }
+  
+  return createClient(url, key)
+}
 
 // Victor's user ID (the only user)
 const VICTOR_USER_ID = process.env.VICTOR_USER_ID
@@ -39,7 +45,7 @@ function validateApiKey(request: NextRequest): boolean {
   return providedKey === apiKey
 }
 
-async function getUserId(): Promise<string | null> {
+async function getUserId(supabase: SupabaseClient): Promise<string | null> {
   // If VICTOR_USER_ID is set, use it directly
   if (VICTOR_USER_ID) {
     return VICTOR_USER_ID
@@ -69,7 +75,18 @@ export async function POST(request: NextRequest) {
     )
   }
   
-  const userId = await getUserId()
+  // Initialize Supabase client at runtime
+  let supabase: SupabaseClient
+  try {
+    supabase = getSupabase()
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+  
+  const userId = await getUserId(supabase)
   if (!userId) {
     return NextResponse.json(
       { error: 'User not found' },
@@ -339,6 +356,16 @@ export async function GET(request: NextRequest) {
       { error: 'Unauthorized' },
       { status: 401 }
     )
+  }
+  
+  // Verify Supabase is configured
+  try {
+    getSupabase()
+  } catch (error: any) {
+    return NextResponse.json({
+      status: 'error',
+      message: error.message
+    }, { status: 500 })
   }
   
   return NextResponse.json({
