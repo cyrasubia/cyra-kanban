@@ -3,40 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-
-type Task = {
-  id: string
-  title: string
-  description?: string
-  column_id: string
-  priority?: 'low' | 'medium' | 'high'
-  project?: string
-  position: number
-  created_at: string
-  updated_at: string
-  created_by: 'victor' | 'cyra'
-}
-
-type LogEntry = {
-  id: string
-  action: string
-  details?: string
-  created_at: string
-}
-
-type Status = {
-  state: 'idle' | 'working' | 'thinking'
-  current_task: string | null
-  updated_at: string
-}
-
-type Note = {
-  id: string
-  content: string
-  from_user: 'victor' | 'cyra'
-  read: boolean
-  created_at: string
-}
+import ClientPanel from '@/components/ClientPanel'
+import { clients } from '@/data/clients'
+import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
 const columns = [
   { id: 'inbox', title: '📥 Inbox', description: 'New tasks' },
@@ -573,6 +542,8 @@ export default function KanbanBoard() {
 
         {/* Sidebar - 4 cols */}
         <div className="col-span-12 lg:col-span-4 space-y-4">
+          <ClientPanel clients={clients} tasks={tasks} />
+
           {/* Quick Note */}
           <div className="bg-slate-900 rounded-xl p-4">
             <h3 className="font-medium text-sm mb-3 text-slate-300">📝 Quick Note to Cyra</h3>
