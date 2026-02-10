@@ -164,7 +164,7 @@ export async function getCalendarList(
 // Sync calendar event back to task (if event was modified in Google Calendar)
 export async function syncCalendarEventToTask(
   event: calendar_v3.Schema$Event,
-  supabase: ReturnType<typeof createClient>
+  supabaseClient: any
 ): Promise<void> {
   const taskId = event.extendedProperties?.private?.kanban_task_id
   if (!taskId) return
@@ -178,7 +178,7 @@ export async function syncCalendarEventToTask(
   }
 
   // Update task with event data
-  await supabase
+  await supabaseClient
     .from('tasks')
     .update({
       title: event.summary || undefined,

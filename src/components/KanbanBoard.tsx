@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Calendar, RefreshCw, CheckCircle, AlertCircle, Repeat } from 'lucide-react'
 import ClientPanel from '@/components/ClientPanel'
 import CalendarView, { ViewToggle } from '@/components/CalendarView'
 import CreateTaskModal from '@/components/CreateTaskModal'
@@ -240,7 +241,7 @@ function TaskCard({
         <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
       )}
       
-      <div className="flex gap-2 mt-2 text-xs text-slate-500 flex-wrap">
+      <div className="flex gap-2 mt-2 text-xs text-slate-500 flex-wrap items-center">
         <span>{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
         <span>{formatTime(task.created_at)}</span>
         {task.priority && (
@@ -251,6 +252,41 @@ function TaskCard({
         {task.due_date && (
           <span className={`text-[10px] px-1.5 rounded ${new Date(task.due_date) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
             📅 {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
+        
+        {/* Recurring indicator */}
+        {task.recurrence_rule && (
+          <span className="text-[10px] px-1.5 rounded bg-purple-500/20 text-purple-400 flex items-center gap-1" title={`Repeats ${task.recurrence_pattern || 'recurring'}`}>
+            <Repeat className="w-3 h-3" />
+            {task.recurrence_pattern === 'daily' && 'Daily'}
+            {task.recurrence_pattern === 'weekly' && 'Weekly'}
+            {task.recurrence_pattern === 'monthly' && 'Monthly'}
+            {task.recurrence_pattern === 'yearly' && 'Yearly'}
+          </span>
+        )}
+        
+        {/* Google Calendar sync indicator */}
+        {task.google_calendar_sync_status && (
+          <span 
+            className={`text-[10px] px-1.5 rounded flex items-center gap-1 ${
+              task.google_calendar_sync_status === 'synced' 
+                ? 'bg-green-500/20 text-green-400' 
+                : task.google_calendar_sync_status === 'pending'
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : 'bg-red-500/20 text-red-400'
+            }`}
+            title={task.google_calendar_sync_status === 'synced' 
+              ? 'Synced to Google Calendar' 
+              : task.google_calendar_sync_status === 'pending'
+              ? 'Sync pending'
+              : `Sync error: ${task.google_calendar_error || 'Unknown'}`
+            }
+          >
+            {task.google_calendar_sync_status === 'synced' && <CheckCircle className="w-3 h-3" />}
+            {task.google_calendar_sync_status === 'pending' && <RefreshCw className="w-3 h-3 animate-spin" />}
+            {task.google_calendar_sync_status === 'error' && <AlertCircle className="w-3 h-3" />}
+            <Calendar className="w-3 h-3" />
           </span>
         )}
       </div>

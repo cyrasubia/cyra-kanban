@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { getCalendarClient, syncTaskToCalendar } from '@/lib/google/calendar'
 
 export const runtime = 'nodejs'
 
 const API_KEY = process.env.CYRA_TASKS_API_KEY
 const SUPABASE_URL = process.env.SUPABASE_URL
 
-// Accept BOTH common env var names so Vercel config mismatches don’t break prod.
+// Accept BOTH common env var names so Vercel config mismatches don't break prod.
 const SUPABASE_SERVICE_ROLE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     const maxPosition = typeof maxPositionData?.position === 'number' ? maxPositionData.position : 0
 
-    const insertRow = {
+    const insertRow: any = {
       user_id: userId,
       title,
       description: payload.description ?? null,
@@ -168,13 +169,14 @@ export async function POST(request: NextRequest) {
       priority,
       position: maxPosition + 1,
       project,
-      created_by: 'cyra'
+      created_by: 'cyra',
+      due_date: payload.due_date || null
     }
 
     const { data: task, error: insertErr } = await supabase
       .from('tasks')
       .insert(insertRow)
-      .select('id')
+      .select('*')
       .single()
 
     if (insertErr || !task) {
@@ -187,6 +189,46 @@ export async function POST(request: NextRequest) {
         insertRow
       })
       throw insertErr ?? new Error('Unknown insert failure')
+    }
+
+    // Sync to Google Calendar if due_date is provided and user has Google Calendar enabled
+    if (payload.due_date) {
+      try {
+        const { data: settings } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (settings?.google_calendar_enabled && settings?.google_calendar_sync_enabled && settings?.google_access_token) {
+          const calendar = await getCalendarClient(settings.google_access_token, settings.google_refresh_token || undefined)
+          const eventId = await syncTaskToCalendar(task, calendar, settings.google_calendar_id || 'primary')
+          
+          // Update task with Google Calendar event ID
+          await supabase
+            .from('tasks')
+            .update({
+              google_calendar_event_id: eventId,
+              google_calendar_sync_status: 'synced',
+              google_calendar_synced_at: new Date().toISOString()
+            })
+            .eq('id', task.id)
+          
+          console.log(`Task synced to Google Calendar: ${eventId}`)
+        }
+      } catch (syncError: any) {
+        // Log but don't fail the request - task is still created
+        console.error('Google Calendar sync failed:', syncError?.message)
+        
+        // Update task with error status
+        await supabase
+          .from('tasks')
+          .update({
+            google_calendar_sync_status: 'error',
+            google_calendar_error: syncError?.message || 'Sync failed'
+          })
+          .eq('id', task.id)
+      }
     }
 
     return NextResponse.json({ ok: true, id: task.id }, { status: 201 })
