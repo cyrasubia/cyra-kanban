@@ -7,7 +7,10 @@ import { createClient } from '@supabase/supabase-js'
 export function getOAuthClient(): OAuth2Client {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
+  
+  // Fix double slash issue by trimming trailing slash from APP_URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/auth/google/callback`
 
   if (!clientId || !clientSecret) {
     throw new Error('Google OAuth credentials not configured')
