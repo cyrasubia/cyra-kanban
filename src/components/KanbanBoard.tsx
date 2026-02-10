@@ -35,13 +35,13 @@ const priorityLabels = {
 }
 
 // Task Details Modal Component
-function TaskModal({ 
-  task, 
-  onClose, 
-  onUpdate, 
-  onDelete, 
-  onMove 
-}: { 
+function TaskModal({
+  task,
+  onClose,
+  onUpdate,
+  onDelete,
+  onMove
+}: {
   task: Task
   onClose: () => void
   onUpdate: (id: string, updates: Partial<Task>) => Promise<void>
@@ -51,11 +51,12 @@ function TaskModal({
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || '')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium')
+  const [dueDate, setDueDate] = useState(task.due_date || '')
   const [saving, setSaving] = useState(false)
-  
+
   const handleSave = async () => {
     setSaving(true)
-    await onUpdate(task.id, { title, description, priority })
+    await onUpdate(task.id, { title, description, priority, due_date: dueDate || null })
     setSaving(false)
     onClose()
   }
@@ -117,6 +118,17 @@ function TaskModal({
             />
           </div>
           
+          {/* Due Date */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 text-slate-300"
+            />
+          </div>
+
           {/* Priority */}
           <div>
             <label className="block text-xs text-slate-400 mb-1">Priority</label>
@@ -126,7 +138,7 @@ function TaskModal({
                   key={p}
                   onClick={() => setPriority(p)}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    priority === p 
+                    priority === p
                       ? `${priorityLabels[p].bg} ${priorityLabels[p].color} border border-current`
                       : 'bg-slate-800 text-slate-400 hover:text-white'
                   }`}
@@ -226,12 +238,17 @@ function TaskCard({
         <p className="text-xs text-slate-500 mt-1 line-clamp-2">{task.description}</p>
       )}
       
-      <div className="flex gap-2 mt-2 text-xs text-slate-500">
+      <div className="flex gap-2 mt-2 text-xs text-slate-500 flex-wrap">
         <span>{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
         <span>{formatTime(task.created_at)}</span>
         {task.priority && (
           <span className={`${priorityLabels[task.priority].color} text-[10px] px-1.5 rounded ${priorityLabels[task.priority].bg}`}>
             {task.priority}
+          </span>
+        )}
+        {task.due_date && (
+          <span className={`text-[10px] px-1.5 rounded ${new Date(task.due_date) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+            📅 {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
         )}
       </div>

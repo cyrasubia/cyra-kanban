@@ -30,6 +30,7 @@ create table if not exists public.tasks (
   priority text check (priority in ('low', 'medium', 'high')),
   project text,
   position integer not null default 0,
+  due_date date,
   created_by text check (created_by in ('victor', 'cyra')) default 'victor',
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
@@ -229,6 +230,7 @@ create trigger set_updated_at before update on public.projects
 create index if not exists tasks_user_id_idx on public.tasks(user_id);
 create index if not exists tasks_column_idx on public.tasks(user_id, column_id);
 create index if not exists tasks_position_idx on public.tasks(column_id, position);
+create index if not exists tasks_due_date_idx on public.tasks(user_id, due_date);
 create index if not exists notes_user_id_idx on public.notes(user_id);
 create index if not exists notes_unread_idx on public.notes(user_id, read) where read = false;
 create index if not exists logs_user_id_idx on public.logs(user_id);
