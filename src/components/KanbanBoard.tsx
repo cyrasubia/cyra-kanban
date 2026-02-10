@@ -215,7 +215,7 @@ function TaskCard({
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onClick={onClick}
-      className={`bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${priorityClass} border border-slate-700 hover:border-cyan-500/50 transition-all relative`}
+      className={`task-card bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${priorityClass} border border-slate-700 hover:border-cyan-500/50 transition-all relative`}
     >
       <div className="flex justify-between items-start">
         <span className="text-sm pr-6">{task.title}</span>
@@ -235,39 +235,37 @@ function TaskCard({
         )}
       </div>
       
-      {/* Quick Hover Actions */}
-      {showActions && (
-        <div 
-          className="absolute top-2 right-2 flex gap-1"
-          onClick={e => e.stopPropagation()}
-        >
-          {task.column_id !== 'done' && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
-              className="p-1.5 bg-green-600/80 hover:bg-green-500 rounded text-[10px] text-white transition-colors"
-              title="Mark Done"
-            >
-              ✓
-            </button>
-          )}
-          {task.column_id !== 'blocked' && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onMoveToBlocked(); }}
-              className="p-1.5 bg-orange-600/80 hover:bg-orange-500 rounded text-[10px] text-white transition-colors"
-              title="Move to Blocked"
-            >
-              🙋
-            </button>
-          )}
+      {/* Quick Actions - always visible on mobile, hover on desktop */}
+      <div 
+        className={`absolute top-2 right-2 flex gap-1 ${showActions ? 'opacity-100' : 'opacity-0 lg:opacity-0'} lg:group-hover:opacity-100 transition-opacity`}
+        onClick={e => e.stopPropagation()}
+      >
+        {task.column_id !== 'done' && (
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1.5 bg-red-600/80 hover:bg-red-500 rounded text-[10px] text-white transition-colors"
-            title="Delete"
+            onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+            className="p-1.5 bg-green-600/80 hover:bg-green-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+            title="Mark Done"
           >
-            ×
+            ✓
           </button>
-        </div>
-      )}
+        )}
+        {task.column_id !== 'blocked' && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveToBlocked(); }}
+            className="p-1.5 bg-orange-600/80 hover:bg-orange-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+            title="Move to Blocked"
+          >
+            🙋
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1.5 bg-red-600/80 hover:bg-red-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+          title="Delete"
+        >
+          ×
+        </button>
+      </div>
     </div>
   )
 }
@@ -433,7 +431,7 @@ export default function KanbanBoard() {
   const statusInfo = statusConfig[status.state]
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
+    <div className="min-h-screen bg-slate-950 text-white p-3 sm:p-6">
       {/* Task Details Modal */}
       {selectedTask && (
         <TaskModal
@@ -446,22 +444,22 @@ export default function KanbanBoard() {
       )}
       
       {/* Header */}
-      <header className="mb-6 flex justify-between items-center">
+      <header className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-cyan-400">✨ Cyra Command Center</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-cyan-400">✨ Cyra Command Center</h1>
           <p className="text-slate-500 text-sm">Victor's AI Operations Dashboard</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-2 px-4 py-2 bg-slate-900 rounded-lg ${statusInfo.color}`}>
-            <span className="text-xl">{statusInfo.emoji}</span>
-            <div>
-              <div className="font-medium">{statusInfo.label}</div>
-              {status.current_task && <div className="text-xs text-slate-400">{status.current_task}</div>}
+        <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-900 rounded-lg ${statusInfo.color} flex-1 sm:flex-none`}>
+            <span className="text-lg sm:text-xl">{statusInfo.emoji}</span>
+            <div className="min-w-0">
+              <div className="font-medium text-sm sm:text-base">{statusInfo.label}</div>
+              {status.current_task && <div className="text-xs text-slate-400 truncate max-w-[120px] sm:max-w-[200px]">{status.current_task}</div>}
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 text-sm text-slate-400 hover:text-white bg-slate-900 rounded-lg transition-colors"
+            className="px-3 sm:px-4 py-2 text-sm text-slate-400 hover:text-white bg-slate-900 rounded-lg transition-colors"
           >
             Logout
           </button>
@@ -469,15 +467,33 @@ export default function KanbanBoard() {
       </header>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Main Kanban - 8 cols */}
+        {/* Main Kanban - full width on mobile, 8 cols on desktop */}
         <div className="col-span-12 lg:col-span-8">
-          <div className="grid grid-cols-5 gap-3">
+          {/* Mobile column selector */}
+          <div className="lg:hidden mb-4">
+            <select 
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm"
+              onChange={(e) => {
+                const element = document.getElementById(`column-${e.target.value}`)
+                element?.scrollIntoView({ behavior: 'smooth', inline: 'start' })
+              }}
+            >
+              <option value="">Jump to column...</option>
+              {columns.map(col => (
+                <option key={col.id} value={col.id}>{col.title}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Kanban columns - horizontal scroll on mobile, grid on desktop */}
+          <div className="kanban-container">
             {columns.map(column => {
               const columnTasks = tasks.filter(t => t.column_id === column.id)
               return (
                 <div
                   key={column.id}
-                  className="bg-slate-900 rounded-xl p-4"
+                  id={`column-${column.id}`}
+                  className="kanban-column bg-slate-900 rounded-xl p-4"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(column.id)}
                 >
@@ -540,8 +556,8 @@ export default function KanbanBoard() {
           </div>
         </div>
 
-        {/* Sidebar - 4 cols */}
-        <div className="col-span-12 lg:col-span-4 space-y-4">
+        {/* Sidebar - full width on mobile, 4 cols on desktop */}
+        <div className="col-span-12 lg:col-span-4 space-y-4 mt-6 lg:mt-0">
           <ClientPanel clients={clients} tasks={tasks} />
 
           {/* Quick Note */}

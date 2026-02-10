@@ -41,3 +41,46 @@ body {
 [draggable="true"]:active {
   cursor: grabbing;
 }
+
+/* Mobile-friendly kanban horizontal scroll */
+.kanban-container {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.kanban-column {
+  flex: 0 0 280px;
+  min-width: 280px;
+  max-width: 280px;
+}
+
+@media (min-width: 1024px) {
+  .kanban-container {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    overflow-x: visible;
+  }
+  
+  .kanban-column {
+    flex: none;
+    min-width: auto;
+    max-width: none;
+  }
+}
+
+/* Mobile touch improvements */
+@media (max-width: 1023px) {
+  .task-card {
+    touch-action: pan-y;
+    user-select: none;
+  }
+  
+  .task-card:active {
+    transform: scale(0.98);
+  }
+}
