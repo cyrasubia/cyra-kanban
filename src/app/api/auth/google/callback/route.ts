@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's primary calendar ID
-    const calendar = await getCalendarClient(tokens.access_token, tokens.refresh_token)
+    const calendar = await getCalendarClient(tokens.access_token, tokens.refresh_token || undefined)
     const calendarList = await calendar.calendarList.list()
     const primaryCalendar = calendarList.data.items?.find(c => c.primary) || calendarList.data.items?.[0]
 
