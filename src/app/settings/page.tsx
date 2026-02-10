@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { 
   Calendar, 
@@ -16,6 +16,7 @@ import {
 
 export default function SettingsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   
   const [loading, setLoading] = useState(true)
@@ -40,9 +41,31 @@ export default function SettingsPage() {
       }
       setUser(user)
       await loadSettings()
+      
+      // Handle OAuth callback success/error
+      const success = searchParams.get('success')
+      const error = searchParams.get('error')
+      
+      if (success === 'connected') {
+        setMessage({ type: 'success', text: 'Google Calendar connected successfully!' })
+        // Clear query params
+        window.history.replaceState({}, '', '/settings')
+      } else if (error) {
+        const errorMessages: Record<string, string> = {
+          google_auth_failed: 'Google authentication failed',
+          no_code: 'No authorization code received',
+          invalid_state: 'Invalid state parameter',
+          no_state: 'No state parameter',
+          no_tokens: 'Failed to get tokens from Google',
+          storage_failed: 'Failed to save connection',
+          callback_failed: 'Callback processing failed'
+        }
+        setMessage({ type: 'error', text: errorMessages[error] || 'Connection failed' })
+        window.history.replaceState({}, '', '/settings')
+      }
     }
     checkAuth()
-  }, [router, supabase.auth])
+  }, [router, supabase.auth, searchParams])
 
   // Load settings from API
   const loadSettings = async () => {
