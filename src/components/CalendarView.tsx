@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, Repeat } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths } from 'date-fns'
 import type { Task } from '@/types/kanban'
+import { expandRecurringTasks, getRecurrenceDescription } from '@/lib/recurrence/utils'
 
 interface CalendarViewProps {
   tasks: Task[]
@@ -17,8 +18,15 @@ const priorityColors = {
   low: 'bg-green-500',
 }
 
+const priorityBgColors = {
+  high: 'bg-red-500/20',
+  medium: 'bg-yellow-500/20',
+  low: 'bg-green-500/20',
+}
+
 export default function CalendarView({ tasks, onTaskClick, onDateClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [hoveredTask, setHoveredTask] = useState<Task | null>(null)
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentDate))
@@ -26,10 +34,16 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
     return eachDayOfInterval({ start, end })
   }, [currentDate])
 
+  // Expand tasks with recurring instances
+  const expandedTasks = useMemo(() => {
+    const rangeStart = startOfWeek(startOfMonth(currentDate))
+    const rangeEnd = endOfWeek(endOfMonth(currentDate))
+    return expandRecurringTasks(tasks, rangeStart, rangeEnd)
+  }, [tasks, currentDate])
+
   const getTasksForDate = (date: Date) => {
-    // Use due_date if available, otherwise fall back to created_at
-    return tasks.filter(task => {
-      const dateToUse = task.due_date || task.created_at
+    return expandedTasks.filter(task => {
+      const dateToUse = task.due_date
       if (dateToUse) {
         const taskDate = new Date(dateToUse)
         return isSameDay(taskDate, date)
@@ -92,7 +106,7 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
               key={idx}
               onClick={() => onDateClick(date)}
               className={`
-                min-h-[80px] p-2 rounded-lg text-left transition-all
+                min-h-[100px] p-2 rounded-lg text-left transition-all
                 ${isCurrentMonth ? 'bg-slate-800 hover:bg-slate-750' : 'bg-slate-900/50'}
                 ${isTodayDate ? 'ring-2 ring-cyan-500' : ''}
               `}
@@ -105,17 +119,39 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
                 {format(date, 'd')}
               </div>
               
-              {/* Task Dots */}
-              <div className="flex flex-wrap gap-1">
-                {dateTasks.slice(0, 4).map((task, taskIdx) => (
+              {/* Task List */}
+              <div className="space-y-1">
+                {dateTasks.slice(0, 3).map((task, taskIdx) => (
                   <div
                     key={taskIdx}
-                    className={`w-2 h-2 rounded-full ${priorityColors[task.priority || 'medium']}`}
-                    title={task.title}
-                  />
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Click on the original task, not the instance
+                      const originalTask = tasks.find(t => t.id === task.id.split('_instance_')[0]) || task
+                      onTaskClick(originalTask)
+                    }}
+                    onMouseEnter={() => setHoveredTask(task)}
+                    onMouseLeave={() => setHoveredTask(null)}
+                    className={`
+                      text-[10px] px-1.5 py-1 rounded truncate cursor-pointer
+                      ${priorityBgColors[task.priority || 'medium']}
+                      ${task.recurrence_rule ? 'border-l-2 border-purple-500' : ''}
+                      hover:opacity-80 transition-opacity
+                    `}
+                    title={`${task.title}${task.recurrence_rule ? ' (Recurring)' : ''}`}
+                  >
+                    <span className={priorityColors[task.priority || 'medium'].replace('bg-', 'text-')}>
+                      {task.title}
+                    </span>
+                    {task.recurrence_rule && (
+                      <Repeat className="w-2 h-2 inline ml-1 text-purple-400" />
+                    )}
+                  </div>
                 ))}
-                {dateTasks.length > 4 && (
-                  <span className="text-[10px] text-slate-500">+{dateTasks.length - 4}</span>
+                {dateTasks.length > 3 && (
+                  <span className="text-[10px] text-slate-500 pl-1">
+                    +{dateTasks.length - 3} more
+                  </span>
                 )}
               </div>
             </button>
@@ -137,7 +173,24 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
           <div className="w-2 h-2 rounded-full bg-green-500" />
           <span>Low</span>
         </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-purple-500" />
+          <span>Recurring</span>
+        </div>
       </div>
+
+      {/* Tooltip for hovered task */}
+      {hoveredTask && hoveredTask.recurrence_rule && (
+        <div className="fixed bottom-4 right-4 bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-xl z-50">
+          <div className="flex items-center gap-2 text-purple-400 text-sm">
+            <Repeat className="w-4 h-4" />
+            <span>Recurring Task</span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            {getRecurrenceDescription(hoveredTask)}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

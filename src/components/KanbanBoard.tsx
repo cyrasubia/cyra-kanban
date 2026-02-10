@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Calendar, RefreshCw, CheckCircle, AlertCircle, Repeat } from 'lucide-react'
+import { Calendar, RefreshCw, CheckCircle, AlertCircle, Repeat, Sparkles } from 'lucide-react'
 import ClientPanel from '@/components/ClientPanel'
 import CalendarView, { ViewToggle } from '@/components/CalendarView'
 import CreateTaskModal from '@/components/CreateTaskModal'
 import DateDetailModal from '@/components/DateDetailModal'
 import { clients } from '@/data/clients'
+import { getRecurrenceDescription } from '@/lib/recurrence/utils'
 import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
 const columns = [
@@ -168,6 +169,62 @@ function TaskModal({
               ))}
             </select>
           </div>
+          
+          {/* Recurrence Info */}
+          {task.recurrence_rule && (
+            <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-purple-400 text-sm">
+                <Repeat className="w-4 h-4" />
+                <span className="font-medium">Recurring Task</span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                {getRecurrenceDescription(task)}
+              </p>
+              {task.recurrence_end_date && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Ends on {new Date(task.recurrence_end_date).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
+          
+          {/* Google Calendar Sync Info */}
+          {task.google_calendar_sync_status && (
+            <div className={`p-3 rounded-lg border ${
+              task.google_calendar_sync_status === 'synced'
+                ? 'bg-green-500/10 border-green-500/30'
+                : task.google_calendar_sync_status === 'error'
+                ? 'bg-red-500/10 border-red-500/30'
+                : 'bg-yellow-500/10 border-yellow-500/30'
+            }`}>
+              <div className={`flex items-center gap-2 text-sm ${
+                task.google_calendar_sync_status === 'synced'
+                  ? 'text-green-400'
+                  : task.google_calendar_sync_status === 'error'
+                  ? 'text-red-400'
+                  : 'text-yellow-400'
+              }`}>
+                {task.google_calendar_sync_status === 'synced' && <CheckCircle className="w-4 h-4" />}
+                {task.google_calendar_sync_status === 'pending' && <RefreshCw className="w-4 h-4 animate-spin" />}
+                {task.google_calendar_sync_status === 'error' && <AlertCircle className="w-4 h-4" />}
+                <span className="font-medium">
+                  {task.google_calendar_sync_status === 'synced' && 'Synced to Google Calendar'}
+                  {task.google_calendar_sync_status === 'pending' && 'Sync pending'}
+                  {task.google_calendar_sync_status === 'error' && 'Sync failed'}
+                </span>
+              </div>
+              {task.google_calendar_synced_at && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Last synced: {new Date(task.google_calendar_synced_at).toLocaleString()}
+                </p>
+              )}
+              {task.google_calendar_error && (
+                <p className="text-xs text-red-400 mt-1">
+                  Error: {task.google_calendar_error}
+                </p>
+              )}
+            </div>
+          )}
           
           {/* Created Date */}
           <div className="text-xs text-slate-500">

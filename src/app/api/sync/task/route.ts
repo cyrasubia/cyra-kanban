@@ -8,6 +8,9 @@ import {
 } from '@/lib/google/calendar'
 import type { Task } from '@/types/kanban'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 // POST /api/sync/task - Sync a task to Google Calendar
 export async function POST(request: NextRequest) {
   try {

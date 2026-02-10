@@ -80,6 +80,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${APP_URL}${redirectPath}?success=connected`)
   } catch (error) {
     console.error('Google callback error:', error)
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=callback_failed`)
+    return NextResponse.redirect(`${APP_URL}/settings?error=callback_failed`)
   }
 }
