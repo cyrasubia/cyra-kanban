@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import ClientPanel from '@/components/ClientPanel'
+import CalendarView, { ViewToggle } from '@/components/CalendarView'
 import { clients } from '@/data/clients'
 import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
@@ -282,6 +283,7 @@ export default function KanbanBoard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [viewMode, setViewMode] = useState<'kanban' | 'calendar'>('kanban')
   
   const supabase = createClient()
   const router = useRouter()
@@ -450,6 +452,7 @@ export default function KanbanBoard() {
           <p className="text-slate-500 text-sm">Victor's AI Operations Dashboard</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-900 rounded-lg ${statusInfo.color} flex-1 sm:flex-none`}>
             <span className="text-lg sm:text-xl">{statusInfo.emoji}</span>
             <div className="min-w-0">
@@ -467,33 +470,46 @@ export default function KanbanBoard() {
       </header>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Main Kanban - full width on mobile, 8 cols on desktop */}
+        {/* Main Content - Kanban or Calendar View */}
         <div className="col-span-12 lg:col-span-8">
-          {/* Mobile column selector */}
-          <div className="lg:hidden mb-4">
-            <select 
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm"
-              onChange={(e) => {
-                const element = document.getElementById(`column-${e.target.value}`)
-                element?.scrollIntoView({ behavior: 'smooth', inline: 'start' })
+          {viewMode === 'calendar' ? (
+            /* Calendar View */
+            <CalendarView
+              tasks={tasks}
+              onTaskClick={setSelectedTask}
+              onDateClick={(date) => {
+                // Could open a modal to add task for this date
+                console.log('Date clicked:', date)
               }}
-            >
-              <option value="">Jump to column...</option>
-              {columns.map(col => (
-                <option key={col.id} value={col.id}>{col.title}</option>
-              ))}
-            </select>
-          </div>
-          
-          {/* Kanban columns - horizontal scroll on mobile, grid on desktop */}
-          <div className="kanban-container">
-            {columns.map(column => {
-              const columnTasks = tasks.filter(t => t.column_id === column.id)
-              return (
-                <div
-                  key={column.id}
-                  id={`column-${column.id}`}
-                  className="kanban-column bg-slate-900 rounded-xl p-4"
+            />
+          ) : (
+            /* Kanban View */
+            <>
+              {/* Mobile column selector */}
+              <div className="lg:hidden mb-4">
+                <select 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm"
+                  onChange={(e) => {
+                    const element = document.getElementById(`column-${e.target.value}`)
+                    element?.scrollIntoView({ behavior: 'smooth', inline: 'start' })
+                  }}
+                >
+                  <option value="">Jump to column...</option>
+                  {columns.map(col => (
+                    <option key={col.id} value={col.id}>{col.title}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Kanban columns - horizontal scroll on mobile, grid on desktop */}
+              <div className="kanban-container">
+                {columns.map(column => {
+                  const columnTasks = tasks.filter(t => t.column_id === column.id)
+                  return (
+                    <div
+                      key={column.id}
+                      id={`column-${column.id}`}
+                      className="kanban-column bg-slate-900 rounded-xl p-4"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(column.id)}
                 >
@@ -553,7 +569,9 @@ export default function KanbanBoard() {
                 </div>
               )
             })}
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Sidebar - full width on mobile, 4 cols on desktop */}
