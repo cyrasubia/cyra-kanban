@@ -41,10 +41,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange code for tokens
-    const tokens = await exchangeCodeForTokens(code)
+    let tokens
+    try {
+      tokens = await exchangeCodeForTokens(code)
+    } catch (tokenError: any) {
+      console.error('Token exchange error:', tokenError.message)
+      return NextResponse.redirect(`${APP_URL}/settings?error=token_exchange_failed`)
+    }
     
-    if (!tokens.access_token || !tokens.refresh_token) {
-      return NextResponse.redirect(`${APP_URL}/settings?error=no_tokens`)
+    if (!tokens.access_token) {
+      console.error('No access token in response:', tokens)
+      return NextResponse.redirect(`${APP_URL}/settings?error=no_access_token`)
+    }
+    
+    if (!tokens.refresh_token) {
+      console.log('No refresh token - user may have already authorized')
+      // Continue without refresh token - access token will work for now
     }
 
     // Get user's primary calendar ID

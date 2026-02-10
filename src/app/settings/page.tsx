@@ -57,10 +57,12 @@ function SettingsContent() {
           invalid_state: 'Invalid state parameter',
           no_state: 'No state parameter',
           no_tokens: 'Failed to get tokens from Google',
+          no_access_token: 'No access token received',
+          token_exchange_failed: 'Failed to exchange code for tokens',
           storage_failed: 'Failed to save connection',
           callback_failed: 'Callback processing failed'
         }
-        setMessage({ type: 'error', text: errorMessages[error] || 'Connection failed' })
+        setMessage({ type: 'error', text: errorMessages[error] || `Connection failed: ${error}` })
         window.history.replaceState({}, '', '/settings')
       }
     }
