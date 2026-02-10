@@ -446,6 +446,20 @@ export default function KanbanBoard() {
   
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
     await supabase.from('tasks').update(updates).eq('id', taskId)
+    
+    // If due_date was updated, trigger Google Calendar sync
+    if ('due_date' in updates) {
+      try {
+        await fetch('/api/sync/task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId, action: 'sync' })
+        })
+      } catch (error) {
+        console.error('Failed to sync to calendar:', error)
+      }
+    }
+    
     fetchData()
   }
   
@@ -454,7 +468,7 @@ export default function KanbanBoard() {
     
     const maxPosition = Math.max(0, ...tasks.filter(t => t.column_id === taskData.column_id).map(t => t.position))
     
-    await supabase.from('tasks').insert({
+    const { data: newTask, error } = await supabase.from('tasks').insert({
       user_id: user.id,
       title: taskData.title!,
       description: taskData.description,
@@ -462,9 +476,44 @@ export default function KanbanBoard() {
       position: maxPosition + 1,
       priority: taskData.priority || 'medium',
       due_date: taskData.due_date,
-      created_by: 'victor'
-    })
+      created_by: 'victor',
+      // Include recurrence fields if present
+      recurrence_rule: taskData.recurrence_rule,
+      recurrence_pattern: taskData.recurrence_pattern,
+      recurrence_end_date: taskData.recurrence_end_date,
+      recurrence_count: taskData.recurrence_count
+    }).select().single()
     
+    if (!error && newTask && taskData.due_date) {
+      // Sync to Google Calendar
+      try {
+        await fetch('/api/sync/task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: newTask.id, action: 'sync' })
+        })
+      } catch (syncError) {
+        console.error('Failed to sync to calendar:', syncError)
+      }
+    }
+    
+    fetchData()
+  }
+  
+  const deleteTaskWithSync = async (taskId: string) => {
+    // First, sync deletion to Google Calendar if task is synced
+    try {
+      await fetch('/api/sync/task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, action: 'delete' })
+      })
+    } catch (error) {
+      console.error('Failed to delete from calendar:', error)
+    }
+    
+    // Then delete the task
+    await supabase.from('tasks').delete().eq('id', taskId)
     fetchData()
   }
 
@@ -519,7 +568,7 @@ export default function KanbanBoard() {
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           onUpdate={updateTask}
-          onDelete={deleteTask}
+          onDelete={deleteTaskWithSync}
           onMove={moveTask}
         />
       )}
@@ -539,6 +588,12 @@ export default function KanbanBoard() {
               {status.current_task && <div className="text-xs text-slate-400 truncate max-w-[120px] sm:max-w-[200px]">{status.current_task}</div>}
             </div>
           </div>
+          <button
+            onClick={() => router.push('/settings')}
+            className="px-3 sm:px-4 py-2 text-sm text-slate-400 hover:text-white bg-slate-900 rounded-lg transition-colors"
+          >
+            Settings
+          </button>
           <button
             onClick={handleLogout}
             className="px-3 sm:px-4 py-2 text-sm text-slate-400 hover:text-white bg-slate-900 rounded-lg transition-colors"
@@ -608,7 +663,7 @@ export default function KanbanBoard() {
                         onMoveToBlocked={() => moveTask(task.id, 'blocked')}
                         onDelete={() => {
                           if (confirm('Delete this task?')) {
-                            deleteTask(task.id)
+                            deleteTaskWithSync(task.id)
                           }
                         }}
                         formatTime={formatTime}

@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForTokens, getCalendarClient } from '@/lib/google/calendar'
 import { createClient } from '@/lib/supabase/server'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// Get app URL from env or default
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://cyra-kanban.vercel.app'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -11,11 +17,11 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Google OAuth error:', error)
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=google_auth_failed`)
+      return NextResponse.redirect(`${APP_URL}/settings?error=google_auth_failed`)
     }
 
     if (!code) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_code`)
+      return NextResponse.redirect(`${APP_URL}/settings?error=no_code`)
     }
 
     // Parse state to get user ID
@@ -28,17 +34,17 @@ export async function GET(request: NextRequest) {
         userId = stateData.userId
         redirectPath = stateData.redirect || '/settings'
       } catch {
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=invalid_state`)
+        return NextResponse.redirect(`${APP_URL}/settings?error=invalid_state`)
       }
     } else {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_state`)
+      return NextResponse.redirect(`${APP_URL}/settings?error=no_state`)
     }
 
     // Exchange code for tokens
     const tokens = await exchangeCodeForTokens(code)
     
     if (!tokens.access_token || !tokens.refresh_token) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_tokens`)
+      return NextResponse.redirect(`${APP_URL}/settings?error=no_tokens`)
     }
 
     // Get user's primary calendar ID
@@ -68,10 +74,10 @@ export async function GET(request: NextRequest) {
 
     if (upsertError) {
       console.error('Failed to store tokens:', upsertError)
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=storage_failed`)
+      return NextResponse.redirect(`${APP_URL}/settings?error=storage_failed`)
     }
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}${redirectPath}?success=connected`)
+    return NextResponse.redirect(`${APP_URL}${redirectPath}?success=connected`)
   } catch (error) {
     console.error('Google callback error:', error)
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=callback_failed`)
