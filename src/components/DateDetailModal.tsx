@@ -45,8 +45,10 @@ export default function DateDetailModal({
   const dateTasks = useMemo(() => {
     if (!date) return []
     return tasks.filter(task => {
-      if (!task.due_date) return false
-      const taskDate = new Date(task.due_date)
+      // Use due_date if set, otherwise fall back to created_at
+      const dateToUse = task.due_date || task.created_at
+      if (!dateToUse) return false
+      const taskDate = new Date(dateToUse)
       return isSameDay(taskDate, date)
     }).sort((a, b) => {
       // Sort by priority (high first), then by column (done last)
