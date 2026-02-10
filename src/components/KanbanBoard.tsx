@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import ClientPanel from '@/components/ClientPanel'
 import CalendarView, { ViewToggle } from '@/components/CalendarView'
+import CreateTaskModal from '@/components/CreateTaskModal'
+import DateDetailModal from '@/components/DateDetailModal'
 import { clients } from '@/data/clients'
 import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
@@ -302,6 +304,11 @@ export default function KanbanBoard() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [viewMode, setViewMode] = useState<'kanban' | 'calendar'>('kanban')
   
+  // New modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isDateDetailModalOpen, setIsDateDetailModalOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  
   const supabase = createClient()
   const router = useRouter()
 
@@ -405,6 +412,25 @@ export default function KanbanBoard() {
     await supabase.from('tasks').update(updates).eq('id', taskId)
     fetchData()
   }
+  
+  const createTask = async (taskData: Partial<Task>) => {
+    if (!user) return
+    
+    const maxPosition = Math.max(0, ...tasks.filter(t => t.column_id === taskData.column_id).map(t => t.position))
+    
+    await supabase.from('tasks').insert({
+      user_id: user.id,
+      title: taskData.title!,
+      description: taskData.description,
+      column_id: taskData.column_id || 'inbox',
+      position: maxPosition + 1,
+      priority: taskData.priority || 'medium',
+      due_date: taskData.due_date,
+      created_by: 'victor'
+    })
+    
+    fetchData()
+  }
 
   const addNote = async () => {
     if (!newNote.trim() || !user) return
@@ -495,8 +521,8 @@ export default function KanbanBoard() {
               tasks={tasks}
               onTaskClick={setSelectedTask}
               onDateClick={(date) => {
-                // Could open a modal to add task for this date
-                console.log('Date clicked:', date)
+                setSelectedDate(date)
+                setIsDateDetailModalOpen(true)
               }}
             />
           ) : (
@@ -669,6 +695,34 @@ export default function KanbanBoard() {
           </div>
         </div>
       </div>
+      
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreate={createTask}
+        initialDate={selectedDate}
+        initialColumn="inbox"
+      />
+      
+      {/* Date Detail Modal */}
+      <DateDetailModal
+        isOpen={isDateDetailModalOpen}
+        onClose={() => setIsDateDetailModalOpen(false)}
+        date={selectedDate}
+        tasks={tasks}
+        onTaskClick={(task) => {
+          setIsDateDetailModalOpen(false)
+          setSelectedTask(task)
+        }}
+        onCreateTask={(date) => {
+          setIsDateDetailModalOpen(false)
+          setSelectedDate(date)
+          setIsCreateModalOpen(true)
+        }}
+        onMarkDone={(taskId) => moveTask(taskId, 'done')}
+        onMoveToColumn={(taskId, columnId) => moveTask(taskId, columnId)}
+      />
     </div>
   )
 }

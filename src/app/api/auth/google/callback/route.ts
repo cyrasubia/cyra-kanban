@@ -1,0 +1,79 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { exchangeCodeForTokens, getCalendarClient } from '@/lib/google/calendar'
+import { createClient } from '@/lib/supabase/server'
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams
+    const code = searchParams.get('code')
+    const state = searchParams.get('state')
+    const error = searchParams.get('error')
+
+    if (error) {
+      console.error('Google OAuth error:', error)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=google_auth_failed`)
+    }
+
+    if (!code) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_code`)
+    }
+
+    // Parse state to get user ID
+    let userId: string
+    let redirectPath = '/settings'
+    
+    if (state) {
+      try {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString())
+        userId = stateData.userId
+        redirectPath = stateData.redirect || '/settings'
+      } catch {
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=invalid_state`)
+      }
+    } else {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_state`)
+    }
+
+    // Exchange code for tokens
+    const tokens = await exchangeCodeForTokens(code)
+    
+    if (!tokens.access_token || !tokens.refresh_token) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=no_tokens`)
+    }
+
+    // Get user's primary calendar ID
+    const calendar = await getCalendarClient(tokens.access_token, tokens.refresh_token)
+    const calendarList = await calendar.calendarList.list()
+    const primaryCalendar = calendarList.data.items?.find(c => c.primary) || calendarList.data.items?.[0]
+
+    // Store tokens in user_settings
+    const supabase = await createClient()
+    
+    const { error: upsertError } = await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: userId,
+        google_calendar_enabled: true,
+        google_calendar_id: primaryCalendar?.id || 'primary',
+        google_calendar_sync_enabled: true,
+        google_access_token: tokens.access_token,
+        google_refresh_token: tokens.refresh_token,
+        google_token_expires_at: tokens.expiry_date 
+          ? new Date(tokens.expiry_date).toISOString() 
+          : null,
+        last_sync_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
+
+    if (upsertError) {
+      console.error('Failed to store tokens:', upsertError)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=storage_failed`)
+    }
+
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}${redirectPath}?success=connected`)
+  } catch (error) {
+    console.error('Google callback error:', error)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=callback_failed`)
+  }
+}
