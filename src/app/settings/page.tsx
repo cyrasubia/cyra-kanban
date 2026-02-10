@@ -59,10 +59,13 @@ function SettingsContent() {
           no_tokens: 'Failed to get tokens from Google',
           no_access_token: 'No access token received',
           token_exchange_failed: 'Failed to exchange code for tokens',
-          storage_failed: 'Failed to save connection',
+          storage_failed: 'Failed to save connection to database',
           callback_failed: 'Callback processing failed'
         }
-        setMessage({ type: 'error', text: errorMessages[error] || `Connection failed: ${error}` })
+        const details = searchParams.get('details')
+        const baseMessage = errorMessages[error] || `Connection failed: ${error}`
+        const fullMessage = details ? `${baseMessage} (${details})` : baseMessage
+        setMessage({ type: 'error', text: fullMessage })
         window.history.replaceState({}, '', '/settings')
       }
     }

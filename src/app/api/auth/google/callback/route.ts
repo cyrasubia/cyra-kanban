@@ -86,7 +86,9 @@ export async function GET(request: NextRequest) {
 
     if (upsertError) {
       console.error('Failed to store tokens:', upsertError)
-      return NextResponse.redirect(`${APP_URL}/settings?error=storage_failed`)
+      // Return error details in URL for debugging
+      const errorDetail = encodeURIComponent(upsertError.message || 'unknown_error')
+      return NextResponse.redirect(`${APP_URL}/settings?error=storage_failed&details=${errorDetail}`)
     }
 
     return NextResponse.redirect(`${APP_URL}${redirectPath}?success=connected`)
