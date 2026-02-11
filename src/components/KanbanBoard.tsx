@@ -572,6 +572,7 @@ export default function KanbanBoard() {
         await fetch('/api/sync/task', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify({ taskId, action: 'sync' })
         })
       } catch (error) {
@@ -610,6 +611,7 @@ export default function KanbanBoard() {
         await fetch('/api/sync/task', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify({ taskId: newTask.id, action: 'sync' })
         })
       } catch (syncError) {
@@ -626,6 +628,7 @@ export default function KanbanBoard() {
       await fetch('/api/sync/task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({ taskId, action: 'delete' })
       })
     } catch (error) {
