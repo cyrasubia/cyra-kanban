@@ -72,13 +72,19 @@ function TaskModal({
 
   const handleSave = async () => {
     setSaving(true)
-    // Convert datetime-local value to Central Time ISO string
+    // Convert datetime-local value to proper ISO format with Central timezone
     let eventDateValue = dueDate || null
     if (eventDateValue) {
-      // The datetime-local input gives us a string like "2026-02-12T14:00"
-      // We need to append the Central timezone offset
-      // Central is -06:00 (CST) or -05:00 (CDT)
-      eventDateValue = eventDateValue + ':00-06:00' // Force CST for now
+      // datetime-local gives us: "2026-02-12T14:00"
+      // We need to treat this as Central Time and convert to UTC for storage
+      const [datePart, timePart] = eventDateValue.split('T')
+      const [year, month, day] = datePart.split('-').map(Number)
+      const [hours, minutes] = timePart.split(':').map(Number)
+      
+      // Create date in Central Time (UTC-6)
+      // Add 6 hours to convert Central to UTC
+      const utcDate = new Date(Date.UTC(year, month - 1, day, hours + 6, minutes))
+      eventDateValue = utcDate.toISOString()
     }
     await onUpdate(task.id, { title, description, priority, event_date: eventDateValue, assigned_to: assignedTo })
     setSaving(false)
