@@ -56,11 +56,12 @@ function TaskModal({
   const [description, setDescription] = useState(task.description || '')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium')
   const [dueDate, setDueDate] = useState(task.due_date || '')
+  const [assignedTo, setAssignedTo] = useState<'victor' | 'cyra'>(task.assigned_to || task.created_by)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    await onUpdate(task.id, { title, description, priority, due_date: dueDate || null })
+    await onUpdate(task.id, { title, description, priority, due_date: dueDate || null, assigned_to: assignedTo })
     setSaving(false)
     onClose()
   }
@@ -150,6 +151,35 @@ function TaskModal({
                   {priorityLabels[p].label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Assigned To */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Assigned To</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAssignedTo('victor')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  assignedTo === 'victor'
+                    ? 'bg-cyan-600 text-white border border-cyan-500'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>👤</span>
+                <span>Victor</span>
+              </button>
+              <button
+                onClick={() => setAssignedTo('cyra')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                  assignedTo === 'cyra'
+                    ? 'bg-cyan-600 text-white border border-cyan-500'
+                    : 'bg-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🤖</span>
+                <span>Cyra</span>
+              </button>
             </div>
           </div>
           
@@ -300,6 +330,11 @@ function TaskCard({
       
       <div className="flex gap-2 mt-2 text-xs text-slate-500 flex-wrap items-center">
         <span>{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
+        {task.assigned_to && task.assigned_to !== task.created_by && (
+          <span className="text-[10px] px-1.5 rounded bg-slate-700/50 text-slate-400" title={`Assigned to ${task.assigned_to}`}>
+            → {task.assigned_to === 'cyra' ? '🤖' : '👤'}
+          </span>
+        )}
         <span>{formatTime(task.created_at)}</span>
         {task.priority && (
           <span className={`${priorityLabels[task.priority].color} text-[10px] px-1.5 rounded ${priorityLabels[task.priority].bg}`}>
@@ -402,6 +437,7 @@ export default function KanbanBoard() {
   const [isDateDetailModalOpen, setIsDateDetailModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'victor' | 'cyra'>('all')
   
   const supabase = createClient()
   const router = useRouter()
@@ -535,6 +571,7 @@ export default function KanbanBoard() {
       priority: taskData.priority || 'medium',
       due_date: taskData.due_date,
       created_by: 'victor',
+      assigned_to: taskData.assigned_to || 'victor',
       // Include recurrence fields if present
       recurrence_rule: taskData.recurrence_rule,
       recurrence_pattern: taskData.recurrence_pattern,
@@ -639,6 +676,45 @@ export default function KanbanBoard() {
         </div>
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
+          
+          {/* Assignee Filter - Only show in Kanban view */}
+          {viewMode === 'kanban' && (
+            <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+              <button
+                onClick={() => setAssigneeFilter('all')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                  assigneeFilter === 'all'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setAssigneeFilter('victor')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                  assigneeFilter === 'victor'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                <span>👤</span>
+                <span className="hidden sm:inline">Victor</span>
+              </button>
+              <button
+                onClick={() => setAssigneeFilter('cyra')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                  assigneeFilter === 'cyra'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                <span>🤖</span>
+                <span className="hidden sm:inline">Cyra</span>
+              </button>
+            </div>
+          )}
+          
           <div className={`flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-900 rounded-lg ${statusInfo.color} flex-1 sm:flex-none`}>
             <span className="text-lg sm:text-xl">{statusInfo.emoji}</span>
             <div className="min-w-0">
@@ -696,7 +772,9 @@ export default function KanbanBoard() {
               {/* Kanban columns - horizontal scroll on mobile, grid on desktop */}
               <div className="kanban-container">
                 {columns.map(column => {
-                  const columnTasks = tasks.filter(t => t.column_id === column.id)
+                  const columnTasks = tasks
+                    .filter(t => t.column_id === column.id)
+                    .filter(t => assigneeFilter === 'all' || t.assigned_to === assigneeFilter)
                   return (
                     <div
                       key={column.id}
