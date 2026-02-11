@@ -100,9 +100,9 @@ export default function DateDetailModal({
   const dateTasks = useMemo(() => {
     if (!date) return []
     return tasks.filter(task => {
-      // Only show tasks that have a due_date set
-      if (!task.due_date) return false
-      const taskDate = new Date(task.due_date)
+      // Only show tasks that have a event_date set
+      if (!task.event_date) return false
+      const taskDate = new Date(task.event_date)
       return isSameDay(taskDate, date)
     }).sort((a, b) => {
       // Sort by priority (high first), then by column (done last)
@@ -366,10 +366,10 @@ export default function DateDetailModal({
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${columnInfo.bg} ${columnInfo.color}`}>
                                   {columnInfo.label}
                                 </span>
-                                {task.due_date && (
+                                {task.event_date && (
                                   <span className="text-[10px] text-slate-500 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {format(new Date(task.due_date), 'h:mm a')}
+                                    {format(new Date(task.event_date), 'h:mm a')}
                                   </span>
                                 )}
                               </div>

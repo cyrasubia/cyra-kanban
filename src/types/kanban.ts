@@ -6,7 +6,7 @@ export type Task = {
   priority?: 'low' | 'medium' | 'high'
   project?: string
   position: number
-  due_date?: string | null
+  event_date?: string | null
   created_at: string
   updated_at: string
   created_by: 'victor' | 'cyra'

@@ -23,11 +23,11 @@ export function generateRecurringInstances(
   rangeStart: Date,
   rangeEnd: Date
 ): Array<{ date: Date; task: Task }> {
-  if (!task.recurrence_rule || !task.due_date) {
+  if (!task.recurrence_rule || !task.event_date) {
     return []
   }
 
-  const rrule = parseRRule(task.recurrence_rule, new Date(task.due_date))
+  const rrule = parseRRule(task.recurrence_rule, new Date(task.event_date))
   if (!rrule) return []
 
   const occurrences = rrule.between(rangeStart, rangeEnd, true)
@@ -36,7 +36,7 @@ export function generateRecurringInstances(
     date,
     task: {
       ...task,
-      due_date: date.toISOString(),
+      event_date: date.toISOString(),
       // Mark as instance
       id: `${task.id}_instance_${date.toISOString().split('T')[0]}`
     }
@@ -45,11 +45,11 @@ export function generateRecurringInstances(
 
 // Get next occurrence after a given date
 export function getNextOccurrence(task: Task, afterDate: Date = new Date()): Date | null {
-  if (!task.recurrence_rule || !task.due_date) {
+  if (!task.recurrence_rule || !task.event_date) {
     return null
   }
 
-  const rrule = parseRRule(task.recurrence_rule, new Date(task.due_date))
+  const rrule = parseRRule(task.recurrence_rule, new Date(task.event_date))
   if (!rrule) return null
 
   const next = rrule.after(afterDate, false)
@@ -62,11 +62,11 @@ export function getMonthOccurrences(
   year: number,
   month: number  // 0-11
 ): Date[] {
-  if (!task.recurrence_rule || !task.due_date) {
+  if (!task.recurrence_rule || !task.event_date) {
     return []
   }
 
-  const rrule = parseRRule(task.recurrence_rule, new Date(task.due_date))
+  const rrule = parseRRule(task.recurrence_rule, new Date(task.event_date))
   if (!rrule) return []
 
   const start = startOfMonth(new Date(year, month, 1))
@@ -86,7 +86,7 @@ export function hasRecurrenceEnded(task: Task): boolean {
 
   // Check count - would need to track occurrences
   // For now, we rely on the RRULE itself
-  const rrule = parseRRule(task.recurrence_rule, new Date(task.due_date || new Date()))
+  const rrule = parseRRule(task.recurrence_rule, new Date(task.event_date || new Date()))
   if (!rrule) return true
 
   const next = rrule.after(new Date(), false)
@@ -135,7 +135,7 @@ export function expandRecurringTasks(
 
   // Separate recurring and non-recurring tasks
   tasks.forEach(task => {
-    if (task.recurrence_rule && task.due_date) {
+    if (task.recurrence_rule && task.event_date) {
       recurringTasks.push(task)
     } else {
       regularTasks.push(task)
@@ -148,7 +148,7 @@ export function expandRecurringTasks(
   // Generate instances for recurring tasks
   recurringTasks.forEach(task => {
     // Add the original task if it's in range
-    const originalDate = new Date(task.due_date!)
+    const originalDate = new Date(task.event_date!)
     if (isWithinInterval(originalDate, { start: rangeStart, end: rangeEnd })) {
       expanded.push(task)
     }

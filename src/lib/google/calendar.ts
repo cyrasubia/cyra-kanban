@@ -71,13 +71,13 @@ export async function syncTaskToCalendar(
   calendar: calendar_v3.Calendar,
   calendarId: string = 'primary'
 ): Promise<string> {
-  if (!task.due_date) {
+  if (!task.event_date) {
     throw new Error('Task has no due date')
   }
 
   // Parse due date
-  const dueDate = new Date(task.due_date)
-  const isAllDay = !task.due_date.includes('T')
+  const dueDate = new Date(task.event_date)
+  const isAllDay = !task.event_date.includes('T')
 
   // Build event data
   const event: calendar_v3.Schema$Event = {
@@ -186,7 +186,7 @@ export async function syncCalendarEventToTask(
     .update({
       title: event.summary || undefined,
       description: event.description || undefined,
-      due_date: dueDate,
+      event_date: dueDate,
       google_calendar_synced_at: new Date().toISOString()
     })
     .eq('id', taskId)

@@ -77,7 +77,7 @@ type TaskPayload = {
   column_id?: string
 
   priority?: string
-  due_date?: string
+  event_date?: string
   source?: string
 }
 
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       position: maxPosition + 1,
       project,
       created_by: 'cyra',
-      due_date: payload.due_date || null
+      event_date: payload.event_date || null
     }
 
     const { data: task, error: insertErr } = await supabase
@@ -191,8 +191,8 @@ export async function POST(request: NextRequest) {
       throw insertErr ?? new Error('Unknown insert failure')
     }
 
-    // Sync to Google Calendar if due_date is provided and user has Google Calendar enabled
-    if (payload.due_date) {
+    // Sync to Google Calendar if event_date is provided and user has Google Calendar enabled
+    if (payload.event_date) {
       try {
         const { data: settings } = await supabase
           .from('user_settings')

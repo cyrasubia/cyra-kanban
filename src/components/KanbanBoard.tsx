@@ -55,13 +55,13 @@ function TaskModal({
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || '')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium')
-  const [dueDate, setDueDate] = useState(task.due_date || '')
+  const [dueDate, setDueDate] = useState(task.event_date || '')
   const [assignedTo, setAssignedTo] = useState<'victor' | 'cyra'>(task.assigned_to || task.created_by)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    await onUpdate(task.id, { title, description, priority, due_date: dueDate || null, assigned_to: assignedTo })
+    await onUpdate(task.id, { title, description, priority, event_date: dueDate || null, assigned_to: assignedTo })
     setSaving(false)
     onClose()
   }
@@ -123,11 +123,11 @@ function TaskModal({
             />
           </div>
           
-          {/* Due Date */}
+          {/* Event Date */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Due Date</label>
+            <label className="block text-xs text-slate-400 mb-1">Event Date & Time</label>
             <input
-              type="date"
+              type="datetime-local"
               value={dueDate}
               onChange={e => setDueDate(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 text-slate-300"
@@ -341,9 +341,9 @@ function TaskCard({
             {task.priority}
           </span>
         )}
-        {task.due_date && (
-          <span className={`text-[10px] px-1.5 rounded ${new Date(task.due_date) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
-            📅 {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        {task.event_date && (
+          <span className={`text-[10px] px-1.5 rounded ${new Date(task.event_date) < new Date() ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+            📅 {new Date(task.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
         )}
         
@@ -541,8 +541,8 @@ export default function KanbanBoard() {
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
     await supabase.from('tasks').update(updates).eq('id', taskId)
     
-    // If due_date was updated, trigger Google Calendar sync
-    if ('due_date' in updates) {
+    // If event_date was updated, trigger Google Calendar sync
+    if ('event_date' in updates) {
       try {
         await fetch('/api/sync/task', {
           method: 'POST',
@@ -569,7 +569,7 @@ export default function KanbanBoard() {
       column_id: taskData.column_id || 'inbox',
       position: maxPosition + 1,
       priority: taskData.priority || 'medium',
-      due_date: taskData.due_date,
+      event_date: taskData.event_date,
       created_by: 'victor',
       assigned_to: taskData.assigned_to || 'victor',
       // Include recurrence fields if present
@@ -579,7 +579,7 @@ export default function KanbanBoard() {
       recurrence_count: taskData.recurrence_count
     }).select().single()
     
-    if (!error && newTask && taskData.due_date) {
+    if (!error && newTask && taskData.event_date) {
       // Sync to Google Calendar
       try {
         await fetch('/api/sync/task', {

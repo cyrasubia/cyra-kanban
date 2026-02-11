@@ -102,9 +102,9 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
 
   const getTasksForDate = (date: Date) => {
     return expandedTasks.filter(task => {
-      // Only show tasks that have a due_date set
-      if (task.due_date) {
-        const taskDate = new Date(task.due_date)
+      // Only show tasks that have a event_date set
+      if (task.event_date) {
+        const taskDate = new Date(task.event_date)
         return isSameDay(taskDate, date)
       }
       return false

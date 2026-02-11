@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only sync tasks with due dates
-    if (!task.due_date) {
+    if (!task.event_date) {
       return NextResponse.json({ error: 'Task has no due date' }, { status: 400 })
     }
 

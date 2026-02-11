@@ -156,7 +156,7 @@ export default function CreateTaskModal({
       description: description.trim() || undefined,
       priority,
       column_id: columnId,
-      due_date: finalDueDate,
+      event_date: finalDueDate,
     }
 
     // Add recurrence if enabled
