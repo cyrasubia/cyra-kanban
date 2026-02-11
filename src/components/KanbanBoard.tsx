@@ -401,6 +401,7 @@ export default function KanbanBoard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isDateDetailModalOpen, setIsDateDetailModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   
   const supabase = createClient()
   const router = useRouter()
@@ -660,9 +661,9 @@ export default function KanbanBoard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-6 relative">
         {/* Main Content - Kanban or Calendar View */}
-        <div className="col-span-12 lg:col-span-8">
+        <div className={`col-span-12 transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-12' : 'lg:col-span-8'}`}>
           {viewMode === 'calendar' ? (
             /* Calendar View */
             <CalendarView
@@ -765,8 +766,34 @@ export default function KanbanBoard() {
           )}
         </div>
 
+        {/* Sidebar Toggle Button - shows when collapsed */}
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-8 rounded-l-lg transition-colors z-50 items-center gap-2 shadow-xl"
+            title="Expand sidebar"
+          >
+            <span className="transform -rotate-90 whitespace-nowrap text-sm font-medium">Client Library</span>
+            <span className="text-xl">◀</span>
+          </button>
+        )}
+        
         {/* Sidebar - full width on mobile, 4 cols on desktop */}
-        <div className="col-span-12 lg:col-span-4 space-y-4 mt-6 lg:mt-0">
+        <div className={`col-span-12 space-y-4 mt-6 lg:mt-0 transition-all duration-300 overflow-y-auto ${
+          sidebarCollapsed 
+            ? 'hidden lg:hidden' 
+            : 'lg:col-span-4 lg:block'
+        }`}>
+          {/* Collapse Button - Desktop only, inside sidebar */}
+          <button
+            onClick={() => setSidebarCollapsed(true)}
+            className="hidden lg:flex w-full items-center justify-between bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 px-4 py-2 rounded-lg transition-colors mb-4"
+            title="Collapse sidebar"
+          >
+            <span className="text-sm font-medium">Hide Client Library</span>
+            <span className="text-xl">▶</span>
+          </button>
+          
           <ClientPanel clients={clients} tasks={tasks} />
 
           {/* Quick Note */}
