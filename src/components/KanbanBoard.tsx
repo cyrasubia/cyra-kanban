@@ -779,19 +779,18 @@ export default function KanbanBoard() {
         )}
         
         {/* Sidebar - full width on mobile, 4 cols on desktop */}
-        <div className={`col-span-12 space-y-4 mt-6 lg:mt-0 transition-all duration-300 overflow-y-auto ${
+        <div className={`col-span-12 space-y-4 mt-6 lg:mt-0 transition-all duration-300 overflow-y-auto relative ${
           sidebarCollapsed 
             ? 'hidden lg:hidden' 
             : 'lg:col-span-4 lg:block'
         }`}>
-          {/* Collapse Button - Desktop only, inside sidebar */}
+          {/* Collapse Button - Desktop only, subtle chevron */}
           <button
             onClick={() => setSidebarCollapsed(true)}
-            className="hidden lg:flex w-full items-center justify-between bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 px-4 py-2 rounded-lg transition-colors mb-4"
-            title="Collapse sidebar"
+            className="hidden lg:flex absolute top-4 right-4 items-center justify-center bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 w-8 h-8 rounded-lg transition-colors z-10"
+            title="Hide sidebar"
           >
-            <span className="text-sm font-medium">Hide Client Library</span>
-            <span className="text-xl">▶</span>
+            <span className="text-lg">›</span>
           </button>
           
           <ClientPanel clients={clients} tasks={tasks} />
