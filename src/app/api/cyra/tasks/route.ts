@@ -215,11 +215,24 @@ export async function POST(request: NextRequest) {
       event_date: eventDate
     }
 
+    console.log('[INSERT] About to insert row:', JSON.stringify({
+      ...insertRow,
+      user_id: '***', // Redact sensitive ID
+      event_date: insertRow.event_date
+    }))
+
     const { data: task, error: insertErr } = await supabase
       .from('tasks')
       .insert(insertRow)
       .select('*')
       .single()
+    
+    console.log('[INSERT] Insert result:', {
+      success: !insertErr,
+      task_id: task?.id,
+      event_date_in_result: task?.event_date,
+      error: insertErr?.message
+    })
 
     if (insertErr || !task) {
       // Log the full details so Vercel logs show the real cause (RLS, missing col, etc.)
