@@ -1,3 +1,14 @@
+export type Subtask = {
+  id: string
+  task_id: string
+  user_id: string
+  title: string
+  completed: boolean
+  position: number
+  created_at: string
+  updated_at: string
+}
+
 export type Task = {
   id: string
   title: string
@@ -24,6 +35,9 @@ export type Task = {
   recurrence_end_date?: string | null
   recurrence_count?: number | null
   parent_task_id?: string | null  // For recurring instances
+  
+  // Subtasks
+  subtasks?: Subtask[]
 }
 
 export type LogEntry = {

@@ -69,6 +69,9 @@ function TaskModal({
   })
   const [assignedTo, setAssignedTo] = useState<'victor' | 'cyra'>(task.assigned_to || task.created_by)
   const [saving, setSaving] = useState(false)
+  const [subtasks, setSubtasks] = useState(task.subtasks || [])
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [addingSubtask, setAddingSubtask] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
@@ -95,6 +98,64 @@ function TaskModal({
     if (confirm('Are you sure you want to delete this task?')) {
       await onDelete(task.id)
       onClose()
+    }
+  }
+  
+  const handleAddSubtask = async () => {
+    if (!newSubtaskTitle.trim()) return
+    
+    setAddingSubtask(true)
+    try {
+      const res = await fetch('/api/cyra/subtasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ taskId: task.id, title: newSubtaskTitle })
+      })
+      
+      if (res.ok) {
+        const { subtask } = await res.json()
+        setSubtasks([...subtasks, subtask])
+        setNewSubtaskTitle('')
+      }
+    } catch (error) {
+      console.error('Failed to add subtask:', error)
+    } finally {
+      setAddingSubtask(false)
+    }
+  }
+  
+  const handleToggleSubtask = async (subtaskId: string, completed: boolean) => {
+    try {
+      const res = await fetch(`/api/cyra/subtasks/${subtaskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ completed })
+      })
+      
+      if (res.ok) {
+        setSubtasks(subtasks.map(st => 
+          st.id === subtaskId ? { ...st, completed } : st
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to toggle subtask:', error)
+    }
+  }
+  
+  const handleDeleteSubtask = async (subtaskId: string) => {
+    try {
+      const res = await fetch(`/api/cyra/subtasks/${subtaskId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      
+      if (res.ok) {
+        setSubtasks(subtasks.filter(st => st.id !== subtaskId))
+      }
+    } catch (error) {
+      console.error('Failed to delete subtask:', error)
     }
   }
   
@@ -205,6 +266,53 @@ function TaskModal({
                 <span>🤖</span>
                 <span>Cyra</span>
               </button>
+            </div>
+          </div>
+          
+          {/* Subtasks */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-2">Subtasks ({subtasks.filter(st => st.completed).length}/{subtasks.length})</label>
+            <div className="space-y-2">
+              {/* Subtask list */}
+              {subtasks.map((subtask) => (
+                <div key={subtask.id} className="flex items-center gap-2 bg-slate-800 rounded-lg p-2 group">
+                  <input
+                    type="checkbox"
+                    checked={subtask.completed}
+                    onChange={(e) => handleToggleSubtask(subtask.id, e.target.checked)}
+                    className="w-4 h-4 rounded accent-cyan-500 cursor-pointer"
+                  />
+                  <span className={`flex-1 text-sm ${subtask.completed ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                    {subtask.title}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteSubtask(subtask.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              
+              {/* Add new subtask */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
+                  placeholder="Add a subtask..."
+                  disabled={addingSubtask}
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-cyan-500 disabled:opacity-50"
+                />
+                <button
+                  onClick={handleAddSubtask}
+                  disabled={addingSubtask || !newSubtaskTitle.trim()}
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {addingSubtask ? '...' : '+'}
+                </button>
+              </div>
             </div>
           </div>
           
@@ -383,6 +491,13 @@ function TaskCard({
           </span>
         )}
         
+        {/* Subtask progress */}
+        {task.subtasks && task.subtasks.length > 0 && (
+          <span className="text-[10px] px-1.5 rounded bg-blue-500/20 text-blue-400 flex items-center gap-1" title={`${task.subtasks.filter(st => st.completed).length} of ${task.subtasks.length} subtasks completed`}>
+            ✓ {task.subtasks.filter(st => st.completed).length}/{task.subtasks.length}
+          </span>
+        )}
+        
         {/* Google Calendar sync indicator */}
         {task.google_calendar_sync_status && (
           <span 
@@ -487,7 +602,7 @@ export default function KanbanBoard() {
 
     try {
       const [tasksRes, logsRes, statusRes, notesRes] = await Promise.all([
-        supabase.from('tasks').select('*').eq('user_id', user.id).order('position'),
+        supabase.from('tasks').select('*, subtasks(*)').eq('user_id', user.id).order('position'),
         supabase.from('logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('status').select('*').eq('user_id', user.id).single(),
         supabase.from('notes').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
