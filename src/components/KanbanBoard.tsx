@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Calendar, RefreshCw, CheckCircle, AlertCircle, Repeat, Sparkles } from 'lucide-react'
-import ClientPanel from '@/components/ClientPanel'
 import CalendarView, { ViewToggle } from '@/components/CalendarView'
 import CreateTaskModal from '@/components/CreateTaskModal'
 import DateDetailModal from '@/components/DateDetailModal'
-import { clients } from '@/data/clients'
 import { getRecurrenceDescription } from '@/lib/recurrence/utils'
 import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
@@ -562,9 +560,7 @@ export default function KanbanBoard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [status, setStatus] = useState<Status>({ state: 'idle', current_task: null, updated_at: new Date().toISOString() })
-  const [notes, setNotes] = useState<Note[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState('')
-  const [newNote, setNewNote] = useState('')
   const [addingToColumn, setAddingToColumn] = useState<string | null>(null)
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [user, setUser] = useState<any>(null)
@@ -576,7 +572,6 @@ export default function KanbanBoard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isDateDetailModalOpen, setIsDateDetailModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'victor' | 'cyra'>('all')
   
   const supabase = createClient()
@@ -601,17 +596,15 @@ export default function KanbanBoard() {
     if (!user) return
 
     try {
-      const [tasksRes, logsRes, statusRes, notesRes] = await Promise.all([
+      const [tasksRes, logsRes, statusRes] = await Promise.all([
         supabase.from('tasks').select('*, subtasks(*)').eq('user_id', user.id).order('position'),
         supabase.from('logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
         supabase.from('status').select('*').eq('user_id', user.id).single(),
-        supabase.from('notes').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       ])
 
       if (tasksRes.data) setTasks(tasksRes.data)
       if (logsRes.data) setLogs(logsRes.data)
       if (statusRes.data) setStatus(statusRes.data)
-      if (notesRes.data) setNotes(notesRes.data)
     } catch (e) {
       console.error('Failed to fetch data:', e)
     }
@@ -755,19 +748,6 @@ export default function KanbanBoard() {
     fetchData()
   }
 
-  const addNote = async () => {
-    if (!newNote.trim() || !user) return
-    
-    await supabase.from('notes').insert({
-      user_id: user.id,
-      content: newNote.trim(),
-      from_user: 'victor'
-    })
-    
-    setNewNote('')
-    fetchData()
-  }
-
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
@@ -880,9 +860,9 @@ export default function KanbanBoard() {
         </div>
       </header>
 
-      <div className="grid grid-cols-12 gap-6 relative">
+      <div className="relative">
         {/* Main Content - Kanban or Calendar View */}
-        <div className={`col-span-12 transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-12' : 'lg:col-span-8'}`}>
+        <div className="col-span-12">
           {viewMode === 'calendar' ? (
             /* Calendar View */
             <CalendarView
@@ -985,108 +965,6 @@ export default function KanbanBoard() {
               </div>
             </>
           )}
-        </div>
-
-        {/* Sidebar Toggle Button - shows when collapsed */}
-        {sidebarCollapsed && (
-          <button
-            onClick={() => setSidebarCollapsed(false)}
-            className="hidden lg:flex fixed right-2 top-24 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 w-6 h-6 rounded transition-colors z-50 items-center justify-center text-sm"
-            title="Show sidebar"
-          >
-            ‹
-          </button>
-        )}
-        
-        {/* Sidebar - full width on mobile, 4 cols on desktop */}
-        <div className={`col-span-12 space-y-4 mt-6 lg:mt-0 transition-all duration-300 overflow-y-auto relative ${
-          sidebarCollapsed 
-            ? 'hidden lg:hidden' 
-            : 'lg:col-span-4 lg:block'
-        }`}>
-          {/* Collapse Button - Desktop only, subtle chevron */}
-          <button
-            onClick={() => setSidebarCollapsed(true)}
-            className="hidden lg:flex absolute top-4 right-4 items-center justify-center hover:bg-slate-800/50 text-slate-500 hover:text-cyan-400 w-5 h-5 rounded transition-colors z-10"
-            title="Hide sidebar"
-          >
-            <span className="text-sm">›</span>
-          </button>
-          
-          <ClientPanel clients={clients} tasks={tasks} />
-
-          {/* Quick Note */}
-          <div className="bg-slate-900 rounded-xl p-4">
-            <h3 className="font-medium text-sm mb-3 text-slate-300">📝 Quick Note to Cyra</h3>
-            <textarea
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              placeholder="Leave instructions, context, or requests..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 resize-none h-20"
-            />
-            <button
-              onClick={addNote}
-              disabled={!newNote.trim()}
-              className="mt-2 w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500 py-2 rounded-lg text-sm transition-colors"
-            >
-              Send Note
-            </button>
-            
-            {notes.filter(n => !n.read).length > 0 && (
-              <div className="mt-3 space-y-2">
-                {notes.filter(n => !n.read).slice(0, 3).map(note => (
-                  <div key={note.id} className="text-xs bg-slate-800 p-2 rounded border-l-2 border-cyan-500">
-                    <span className="text-slate-400">{note.from_user === 'cyra' ? '🤖' : '👤'}</span> {note.content}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Action Log */}
-          <div className="bg-slate-900 rounded-xl p-4">
-            <h3 className="font-medium text-sm mb-3 text-slate-300">📋 Action Log</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {logs.length === 0 ? (
-                <p className="text-xs text-slate-500">No actions logged yet</p>
-              ) : (
-                logs.map(log => (
-                  <div key={log.id} className="text-xs border-l-2 border-slate-700 pl-3 py-1">
-                    <div className="text-slate-300">{log.action}</div>
-                    {log.details && <div className="text-slate-500">{log.details}</div>}
-                    <div className="text-slate-600">{formatTime(log.created_at)}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="bg-slate-900 rounded-xl p-4">
-            <h3 className="font-medium text-sm mb-3 text-slate-300">📊 Overview</h3>
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-cyan-400">{tasks.filter(t => t.column_id === 'inbox').length}</div>
-                <div className="text-xs text-slate-500">Inbox</div>
-              </div>
-              <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-yellow-400">{tasks.filter(t => t.column_id === 'working').length}</div>
-                <div className="text-xs text-slate-500">Working</div>
-              </div>
-              <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-orange-400">{tasks.filter(t => t.column_id === 'blocked').length}</div>
-                <div className="text-xs text-slate-500">Needs You</div>
-              </div>
-              <div className="bg-slate-800 rounded-lg p-2">
-                <div className="text-xl font-bold text-purple-400">{tasks.filter(t => t.column_id === 'review').length}</div>
-                <div className="text-xs text-slate-500">Review</div>
-              </div>
-            </div>
-            <div className="mt-2 bg-slate-800 rounded-lg p-2 text-center">
-              <div className="text-xl font-bold text-green-400">{tasks.filter(t => t.column_id === 'done').length}</div>
-              <div className="text-xs text-slate-500">Done</div>
-            </div>
-          </div>
         </div>
       </div>
       
