@@ -161,17 +161,26 @@ export async function POST(request: NextRequest) {
 
     const maxPosition = typeof maxPositionData?.position === 'number' ? maxPositionData.position : 0
 
-    // Convert event_date to Central Time if provided
+    // Convert event_date to UTC for storage
     let eventDate = payload.event_date || null
     if (eventDate) {
-      // If the date doesn't have timezone info, append Central timezone
-      if (!eventDate.includes('+') && !eventDate.includes('Z') && !eventDate.includes('-0')) {
-        // Date format like "2026-02-12" or "2026-02-12T14:00"
-        if (eventDate.includes('T')) {
-          eventDate = eventDate + ':00-06:00' // Append seconds and Central timezone
-        } else {
-          eventDate = eventDate + 'T00:00:00-06:00' // Default to midnight Central
+      try {
+        // Parse the date (assuming Central Time if no timezone specified)
+        const parsedDate = new Date(eventDate)
+        
+        // If the original string didn't have timezone info, treat it as Central Time (UTC-6)
+        const hasTimezone = /[+-]\d{2}:\d{2}$/.test(eventDate) || eventDate.endsWith('Z')
+        if (!hasTimezone) {
+          // Add 6 hours to convert Central to UTC
+          parsedDate.setHours(parsedDate.getHours() + 6)
         }
+        
+        // Store as UTC ISO string
+        eventDate = parsedDate.toISOString()
+        console.log('[EVENT_DATE] Input:', payload.event_date, '→ UTC:', eventDate)
+      } catch (err) {
+        console.error('[EVENT_DATE] Parse error:', err)
+        eventDate = null
       }
     }
 
