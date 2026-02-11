@@ -188,7 +188,7 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1" style={{ height: 'calc(100vh - 280px)' }}>
         {days.map((date, idx) => {
           const dateTasks = getTasksForDate(date)
           const dateGoogleEvents = getGoogleEventsForDate(date)
@@ -200,7 +200,7 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
               key={idx}
               onClick={() => onDateClick(date)}
               className={`
-                min-h-[100px] p-2 rounded-lg text-left transition-all
+                p-2 rounded-lg text-left transition-all overflow-hidden
                 ${isCurrentMonth ? 'bg-slate-800 hover:bg-slate-750' : 'bg-slate-900/50'}
                 ${isTodayDate ? 'ring-2 ring-cyan-500' : ''}
               `}
