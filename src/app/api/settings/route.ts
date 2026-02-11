@@ -14,6 +14,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('Getting settings for user:', user.id)
+
     const { data: settings, error } = await supabase
       .from('user_settings')
       .select('google_calendar_enabled, google_calendar_id, google_calendar_sync_enabled, last_sync_at, updated_at')
@@ -21,8 +23,11 @@ export async function GET() {
       .single()
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+      console.error('Settings query error:', error)
       throw error
     }
+
+    console.log('Settings found:', settings)
 
     return NextResponse.json({
       google_calendar_enabled: settings?.google_calendar_enabled ?? false,
