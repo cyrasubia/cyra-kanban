@@ -55,13 +55,32 @@ function TaskModal({
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || '')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium')
-  const [dueDate, setDueDate] = useState(task.event_date || '')
+  const [dueDate, setDueDate] = useState(() => {
+    if (!task.event_date) return ''
+    // Convert from UTC to Central Time for display
+    const date = new Date(task.event_date)
+    // Format as YYYY-MM-DDTHH:mm for datetime-local input
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  })
   const [assignedTo, setAssignedTo] = useState<'victor' | 'cyra'>(task.assigned_to || task.created_by)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    await onUpdate(task.id, { title, description, priority, event_date: dueDate || null, assigned_to: assignedTo })
+    // Convert datetime-local value to Central Time ISO string
+    let eventDateValue = dueDate || null
+    if (eventDateValue) {
+      // The datetime-local input gives us a string like "2026-02-12T14:00"
+      // We need to append the Central timezone offset
+      // Central is -06:00 (CST) or -05:00 (CDT)
+      eventDateValue = eventDateValue + ':00-06:00' // Force CST for now
+    }
+    await onUpdate(task.id, { title, description, priority, event_date: eventDateValue, assigned_to: assignedTo })
     setSaving(false)
     onClose()
   }

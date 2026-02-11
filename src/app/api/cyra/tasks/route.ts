@@ -161,6 +161,20 @@ export async function POST(request: NextRequest) {
 
     const maxPosition = typeof maxPositionData?.position === 'number' ? maxPositionData.position : 0
 
+    // Convert event_date to Central Time if provided
+    let eventDate = payload.event_date || null
+    if (eventDate) {
+      // If the date doesn't have timezone info, append Central timezone
+      if (!eventDate.includes('+') && !eventDate.includes('Z') && !eventDate.includes('-0')) {
+        // Date format like "2026-02-12" or "2026-02-12T14:00"
+        if (eventDate.includes('T')) {
+          eventDate = eventDate + ':00-06:00' // Append seconds and Central timezone
+        } else {
+          eventDate = eventDate + 'T00:00:00-06:00' // Default to midnight Central
+        }
+      }
+    }
+
     const insertRow: any = {
       user_id: userId,
       title,
@@ -170,7 +184,7 @@ export async function POST(request: NextRequest) {
       position: maxPosition + 1,
       project,
       created_by: 'cyra',
-      event_date: payload.event_date || null
+      event_date: eventDate
     }
 
     const { data: task, error: insertErr } = await supabase

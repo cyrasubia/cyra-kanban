@@ -144,10 +144,12 @@ export default function CreateTaskModal({
 
     setSaving(true)
     
-    // Combine date and time if both provided
+    // Combine date and time if both provided, and append Central timezone
     let finalDueDate = dueDate || null
     if (dueDate && dueTime) {
-      finalDueDate = `${dueDate}T${dueTime}`
+      finalDueDate = `${dueDate}T${dueTime}:00-06:00` // Central Time (CST)
+    } else if (dueDate) {
+      finalDueDate = `${dueDate}T00:00:00-06:00` // Default to midnight Central
     }
 
     // Build task data
