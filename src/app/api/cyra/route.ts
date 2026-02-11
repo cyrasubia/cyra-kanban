@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { getCalendarClient, syncTaskToCalendar } from '@/lib/google/calendar'
 
 // Lazy initialization to avoid build-time errors
 function getSupabase(): SupabaseClient {
@@ -17,7 +18,7 @@ function getSupabase(): SupabaseClient {
 const VICTOR_USER_ID = process.env.VICTOR_USER_ID
 
 type CyraAction = 
-  | { action: 'add_task'; title: string; column?: string; priority?: 'low' | 'medium' | 'high'; description?: string }
+  | { action: 'add_task'; title: string; column?: string; priority?: 'low' | 'medium' | 'high'; description?: string; event_date?: string; assigned_to?: 'victor' | 'cyra' }
   | { action: 'move_task'; task_id: string; to_column: string }
   | { action: 'mark_done'; task_id: string }
   | { action: 'add_note'; content: string }
@@ -25,7 +26,7 @@ type CyraAction =
   | { action: 'get_notes'; unread_only?: boolean }
   | { action: 'update_status'; state: 'idle' | 'working' | 'thinking'; current_task?: string }
   | { action: 'add_log'; log_action: string; details?: string; task_id?: string }
-  | { action: 'update_task'; task_id: string; title?: string; description?: string; priority?: 'low' | 'medium' | 'high' }
+  | { action: 'update_task'; task_id: string; title?: string; description?: string; priority?: 'low' | 'medium' | 'high'; event_date?: string; assigned_to?: 'victor' | 'cyra' }
   | { action: 'delete_task'; task_id: string }
 
 function validateApiKey(request: NextRequest): boolean {
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
         
         const maxPosition = maxPosData?.position ?? 0
         
-        const { data: task, error } = await supabase
+        const { data: task, error} = await supabase
           .from('tasks')
           .insert({
             user_id: userId,
@@ -128,12 +129,43 @@ export async function POST(request: NextRequest) {
             column_id: body.column || 'inbox',
             priority: body.priority || 'medium',
             position: maxPosition + 1,
-            created_by: 'cyra'
+            created_by: 'cyra',
+            event_date: body.event_date || null,
+            assigned_to: body.assigned_to || 'victor'
           })
           .select()
           .single()
         
         if (error) throw error
+        
+        // Sync to Google Calendar if event_date is provided
+        if (task.event_date) {
+          try {
+            const { data: settings } = await supabase
+              .from('user_settings')
+              .select('*')
+              .eq('user_id', userId)
+              .single()
+
+            if (settings?.google_calendar_enabled && settings?.google_calendar_sync_enabled && settings?.google_access_token) {
+              const calendar = await getCalendarClient(settings.google_access_token, settings.google_refresh_token || undefined)
+              const eventId = await syncTaskToCalendar(task, calendar, settings.google_calendar_id || 'primary')
+              
+              // Update task with Google Calendar event ID
+              await supabase
+                .from('tasks')
+                .update({
+                  google_calendar_event_id: eventId,
+                  google_calendar_sync_status: 'synced',
+                  google_calendar_synced_at: new Date().toISOString()
+                })
+                .eq('id', task.id)
+            }
+          } catch (syncError: any) {
+            console.error('Google Calendar sync failed:', syncError?.message)
+            // Don't fail the whole request - task is still created
+          }
+        }
         
         // Log the action
         await supabase.from('logs').insert({
