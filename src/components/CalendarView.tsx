@@ -1,10 +1,22 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutGrid, Repeat } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths } from 'date-fns'
 import type { Task } from '@/types/kanban'
 import { expandRecurringTasks, getRecurrenceDescription } from '@/lib/recurrence/utils'
+
+export interface GoogleCalendarEvent {
+  id: string
+  title: string
+  description?: string
+  start: string
+  end: string
+  isAllDay: boolean
+  location?: string
+  hangoutLink?: string
+  source: 'google'
+}
 
 interface CalendarViewProps {
   tasks: Task[]
@@ -27,6 +39,10 @@ const priorityBgColors = {
 export default function CalendarView({ tasks, onTaskClick, onDateClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [hoveredTask, setHoveredTask] = useState<Task | null>(null)
+  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([])
+  const [showGoogleEvents, setShowGoogleEvents] = useState(true)
+  const [isLoadingGoogleEvents, setIsLoadingGoogleEvents] = useState(false)
+  const [googleError, setGoogleError] = useState<string | null>(null)
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentDate))
@@ -41,6 +57,49 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
     return expandRecurringTasks(tasks, rangeStart, rangeEnd)
   }, [tasks, currentDate])
 
+  // Fetch Google Calendar events when month changes
+  const fetchGoogleEvents = useCallback(async () => {
+    if (!showGoogleEvents) return
+
+    setIsLoadingGoogleEvents(true)
+    setGoogleError(null)
+
+    try {
+      const rangeStart = startOfWeek(startOfMonth(currentDate))
+      const rangeEnd = endOfWeek(endOfMonth(currentDate))
+      
+      const timeMin = rangeStart.toISOString()
+      const timeMax = rangeEnd.toISOString()
+
+      const response = await fetch(`/api/calendar/google/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`)
+      
+      if (response.status === 400) {
+        // Google Calendar not connected - this is expected
+        setGoogleEvents([])
+        return
+      }
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to fetch Google Calendar events')
+      }
+
+      const data = await response.json()
+      setGoogleEvents(data.events || [])
+    } catch (error: any) {
+      console.error('Failed to fetch Google events:', error)
+      setGoogleError(error.message)
+      setGoogleEvents([])
+    } finally {
+      setIsLoadingGoogleEvents(false)
+    }
+  }, [currentDate, showGoogleEvents])
+
+  // Fetch Google events when month changes or toggle is enabled
+  useEffect(() => {
+    fetchGoogleEvents()
+  }, [fetchGoogleEvents])
+
   const getTasksForDate = (date: Date) => {
     return expandedTasks.filter(task => {
       // Use due_date if set, otherwise fall back to created_at
@@ -50,6 +109,15 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
         return isSameDay(taskDate, date)
       }
       return false
+    })
+  }
+
+  const getGoogleEventsForDate = (date: Date) => {
+    if (!showGoogleEvents) return []
+    
+    return googleEvents.filter(event => {
+      const eventDate = new Date(event.start)
+      return isSameDay(eventDate, date)
     })
   }
 
@@ -63,8 +131,26 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
           <h2 className="text-lg font-semibold text-white">
             {format(currentDate, 'MMMM yyyy')}
           </h2>
+          {isLoadingGoogleEvents && (
+            <span className="text-xs text-slate-500 animate-pulse">Syncing...</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Google Calendar Toggle */}
+          <button
+            onClick={() => setShowGoogleEvents(!showGoogleEvents)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              showGoogleEvents
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-600/30'
+                : 'bg-slate-800 text-slate-400 hover:text-slate-300'
+            }`}
+            title="Toggle Google Calendar events"
+          >
+            <CalendarIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Google Calendar</span>
+            {showGoogleEvents ? 'On' : 'Off'}
+          </button>
+
           <button
             onClick={() => setCurrentDate(subMonths(currentDate, 1))}
             className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
@@ -86,6 +172,13 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
         </div>
       </div>
 
+      {/* Error Message */}
+      {googleError && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">
+          Google Calendar: {googleError}
+        </div>
+      )}
+
       {/* Weekday Headers */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {weekDays.map(day => (
@@ -99,6 +192,7 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
       <div className="grid grid-cols-7 gap-1">
         {days.map((date, idx) => {
           const dateTasks = getTasksForDate(date)
+          const dateGoogleEvents = getGoogleEventsForDate(date)
           const isCurrentMonth = isSameMonth(date, currentDate)
           const isTodayDate = isToday(date)
 
@@ -122,9 +216,10 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
               
               {/* Task List */}
               <div className="space-y-1">
-                {dateTasks.slice(0, 3).map((task, taskIdx) => (
+                {/* Kanban Tasks */}
+                {dateTasks.slice(0, 2).map((task, taskIdx) => (
                   <div
-                    key={taskIdx}
+                    key={`task-${taskIdx}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       // Click on the original task, not the instance
@@ -149,11 +244,36 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
                     )}
                   </div>
                 ))}
-                {dateTasks.length > 3 && (
-                  <span className="text-[10px] text-slate-500 pl-1">
-                    +{dateTasks.length - 3} more
-                  </span>
-                )}
+
+                {/* Google Calendar Events */}
+                {showGoogleEvents && dateGoogleEvents.slice(0, dateTasks.length >= 2 ? 1 : 2).map((event, eventIdx) => (
+                  <div
+                    key={`google-${eventIdx}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] px-1.5 py-1 rounded truncate bg-blue-500/20 border-l-2 border-blue-500 hover:opacity-80 transition-opacity"
+                    title={`${event.title} (Google Calendar)${event.isAllDay ? ' - All day' : ''}`}
+                  >
+                    <span className="text-blue-400 flex items-center gap-1">
+                      <CalendarIcon className="w-2 h-2" />
+                      {event.title}
+                    </span>
+                  </div>
+                ))}
+
+                {/* More indicator */}
+                {(() => {
+                  const totalItems = dateTasks.length + dateGoogleEvents.length
+                  const displayedItems = Math.min(dateTasks.length, 2) + Math.min(dateGoogleEvents.length, dateTasks.length >= 2 ? 1 : 2)
+                  
+                  if (totalItems > displayedItems) {
+                    return (
+                      <span className="text-[10px] text-slate-500 pl-1">
+                        +{totalItems - displayedItems} more
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
               </div>
             </button>
           )
@@ -178,6 +298,12 @@ export default function CalendarView({ tasks, onTaskClick, onDateClick }: Calend
           <div className="w-2 h-2 rounded-full bg-purple-500" />
           <span>Recurring</span>
         </div>
+        {showGoogleEvents && (
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-blue-500" />
+            <span>Google Calendar</span>
+          </div>
+        )}
       </div>
 
       {/* Tooltip for hovered task */}
