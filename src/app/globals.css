@@ -84,6 +84,15 @@ body {
     flex: 0 0 240px;
     min-width: 240px;
     max-width: 240px;
+    max-height: calc(100vh - 220px);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Make the task list scrollable within each column */
+  .kanban-column .space-y-2 {
+    overflow-y: auto;
+    max-height: calc(100vh - 320px);
   }
 }
 
