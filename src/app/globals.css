@@ -70,11 +70,11 @@ body {
   }
 }
 
-/* Desktop: grid layout */
+/* Desktop: grid layout with minimum column width */
 @media (min-width: 1024px) {
   .kanban-container {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
     gap: 0.75rem;
     overflow-x: visible;
     padding-left: 0;
@@ -85,6 +85,14 @@ body {
     flex: none;
     min-width: auto;
     max-width: none;
+    overflow: hidden;
+  }
+}
+
+/* Extra large screens: more breathing room */
+@media (min-width: 1400px) {
+  .kanban-container {
+    grid-template-columns: repeat(5, minmax(260px, 1fr));
   }
 }
 
