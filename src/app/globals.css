@@ -70,29 +70,29 @@ body {
   }
 }
 
-/* Desktop: grid layout with minimum column width */
+/* Desktop: keep flex layout with fixed-width columns and horizontal scroll if needed */
 @media (min-width: 1024px) {
   .kanban-container {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    display: flex;
     gap: 0.75rem;
-    overflow-x: visible;
+    overflow-x: auto;
     padding-left: 0;
     padding-right: 0;
   }
   
   .kanban-column {
-    flex: none;
-    min-width: auto;
-    max-width: none;
-    overflow: hidden;
+    flex: 0 0 240px;
+    min-width: 240px;
+    max-width: 240px;
   }
 }
 
-/* Extra large screens: more breathing room */
-@media (min-width: 1400px) {
-  .kanban-container {
-    grid-template-columns: repeat(5, minmax(260px, 1fr));
+/* Extra large screens: wider columns */
+@media (min-width: 1600px) {
+  .kanban-column {
+    flex: 0 0 280px;
+    min-width: 280px;
+    max-width: 280px;
   }
 }
 
