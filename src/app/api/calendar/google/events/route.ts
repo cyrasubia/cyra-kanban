@@ -125,8 +125,15 @@ export async function GET(request: NextRequest) {
 
       const events = response.data.items || []
 
+      // Filter out events that originated from Kanban tasks (to avoid duplicates)
+      const filteredEvents = events.filter((event: calendar_v3.Schema$Event) => {
+        // Check if this event was created by Cyra Kanban
+        const kanbanTaskId = event.extendedProperties?.private?.kanban_task_id
+        return !kanbanTaskId // Only show events NOT created from Kanban
+      })
+
       // Format events for frontend
-      const formattedEvents: GoogleCalendarEvent[] = events.map((event: calendar_v3.Schema$Event) => {
+      const formattedEvents: GoogleCalendarEvent[] = filteredEvents.map((event: calendar_v3.Schema$Event) => {
         const isAllDay = !!event.start?.date
         
         return {
