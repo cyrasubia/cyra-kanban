@@ -206,17 +206,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Sync to Google Calendar if event_date is provided and user has Google Calendar enabled
-    if (payload.event_date) {
+    if (task.event_date) {
+      console.log('[SYNC] Task has event_date, checking Google Calendar settings...')
       try {
-        const { data: settings } = await supabase
+        const { data: settings, error: settingsError } = await supabase
           .from('user_settings')
           .select('*')
           .eq('user_id', userId)
           .single()
 
+        if (settingsError) {
+          console.error('[SYNC] Failed to fetch settings:', settingsError)
+          throw settingsError
+        }
+
+        console.log('[SYNC] Settings:', {
+          enabled: settings?.google_calendar_enabled,
+          sync_enabled: settings?.google_calendar_sync_enabled,
+          has_token: !!settings?.google_access_token
+        })
+
         if (settings?.google_calendar_enabled && settings?.google_calendar_sync_enabled && settings?.google_access_token) {
+          console.log('[SYNC] Creating calendar client...')
           const calendar = await getCalendarClient(settings.google_access_token, settings.google_refresh_token || undefined)
+          
+          console.log('[SYNC] Syncing task to calendar...')
           const eventId = await syncTaskToCalendar(task, calendar, settings.google_calendar_id || 'primary')
+          
+          console.log('[SYNC] Sync successful, event ID:', eventId)
           
           // Update task with Google Calendar event ID
           await supabase
@@ -228,11 +245,17 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', task.id)
           
-          console.log(`Task synced to Google Calendar: ${eventId}`)
+          console.log(`[SYNC] Task ${task.id} synced to Google Calendar: ${eventId}`)
+        } else {
+          console.log('[SYNC] Google Calendar sync not enabled or no access token')
         }
       } catch (syncError: any) {
         // Log but don't fail the request - task is still created
-        console.error('Google Calendar sync failed:', syncError?.message)
+        console.error('[SYNC] Google Calendar sync failed:', {
+          message: syncError?.message,
+          stack: syncError?.stack,
+          error: syncError
+        })
         
         // Update task with error status
         await supabase
@@ -243,6 +266,8 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', task.id)
       }
+    } else {
+      console.log('[SYNC] No event_date on task, skipping Google Calendar sync')
     }
 
     return NextResponse.json({ ok: true, id: task.id }, { status: 201 })
