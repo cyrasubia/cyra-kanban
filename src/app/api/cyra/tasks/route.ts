@@ -114,6 +114,12 @@ export async function POST(request: NextRequest) {
   let payload: TaskPayload
   try {
     payload = (await request.json()) as TaskPayload
+    console.log('[PAYLOAD] Received:', JSON.stringify({
+      action: payload.action,
+      title: payload.title,
+      event_date: payload.event_date,
+      event_date_type: typeof payload.event_date
+    }))
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
