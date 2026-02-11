@@ -50,20 +50,35 @@ body {
   padding-bottom: 1rem;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
+/* Mobile: smaller columns that fit screen */
 .kanban-column {
-  flex: 0 0 280px;
-  min-width: 280px;
-  max-width: 280px;
+  flex: 0 0 85vw;
+  min-width: 85vw;
+  max-width: 85vw;
 }
 
+/* Tablet: medium columns */
+@media (min-width: 640px) {
+  .kanban-column {
+    flex: 0 0 300px;
+    min-width: 300px;
+    max-width: 300px;
+  }
+}
+
+/* Desktop: grid layout */
 @media (min-width: 1024px) {
   .kanban-container {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 0.75rem;
     overflow-x: visible;
+    padding-left: 0;
+    padding-right: 0;
   }
   
   .kanban-column {
