@@ -167,6 +167,7 @@ export async function POST(request: NextRequest) {
     const maxPosition = typeof maxPositionData?.position === 'number' ? maxPositionData.position : 0
 
     // Convert event_date to UTC for storage
+    console.log('[EVENT_DATE] payload.event_date value:', payload.event_date, 'Type:', typeof payload.event_date, 'Truthy?:', !!payload.event_date)
     let eventDate = payload.event_date || null
     if (eventDate) {
       console.log('[EVENT_DATE] Raw input:', eventDate, 'Type:', typeof eventDate)
