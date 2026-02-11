@@ -164,23 +164,42 @@ export async function POST(request: NextRequest) {
     // Convert event_date to UTC for storage
     let eventDate = payload.event_date || null
     if (eventDate) {
+      console.log('[EVENT_DATE] Raw input:', eventDate, 'Type:', typeof eventDate)
+      
       try {
-        // Parse the date (assuming Central Time if no timezone specified)
+        // Parse the date
         const parsedDate = new Date(eventDate)
         
-        // If the original string didn't have timezone info, treat it as Central Time (UTC-6)
+        console.log('[EVENT_DATE] Parsed Date object:', parsedDate)
+        console.log('[EVENT_DATE] Is valid?', !isNaN(parsedDate.getTime()))
+        
+        if (isNaN(parsedDate.getTime())) {
+          throw new Error('Invalid date')
+        }
+        
+        // Check if the original string has timezone info
         const hasTimezone = /[+-]\d{2}:\d{2}$/.test(eventDate) || eventDate.endsWith('Z')
+        console.log('[EVENT_DATE] Has timezone?', hasTimezone)
+        
         if (!hasTimezone) {
-          // Add 6 hours to convert Central to UTC
+          // The Date constructor interprets strings without timezone as LOCAL time (UTC on server)
+          // We need to treat it as Central Time (UTC-6), so add 6 hours
+          console.log('[EVENT_DATE] Before TZ conversion:', parsedDate.toISOString())
           parsedDate.setHours(parsedDate.getHours() + 6)
+          console.log('[EVENT_DATE] After adding 6h for CT→UTC:', parsedDate.toISOString())
         }
         
         // Store as UTC ISO string
         eventDate = parsedDate.toISOString()
-        console.log('[EVENT_DATE] Input:', payload.event_date, '→ UTC:', eventDate)
-      } catch (err) {
-        console.error('[EVENT_DATE] Parse error:', err)
-        eventDate = null
+        console.log('[EVENT_DATE] Final UTC:', eventDate)
+      } catch (err: any) {
+        console.error('[EVENT_DATE] Parse error:', {
+          error: err.message,
+          stack: err.stack,
+          input: eventDate
+        })
+        // Keep the original value - let PostgreSQL try to parse it
+        console.log('[EVENT_DATE] Keeping original value for PostgreSQL to parse')
       }
     }
 
