@@ -70,6 +70,8 @@ function TaskModal({
   const [subtasks, setSubtasks] = useState(task.subtasks || [])
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const [addingSubtask, setAddingSubtask] = useState(false)
+  const [attachments, setAttachments] = useState(task.attachments || [])
+  const [uploading, setUploading] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
@@ -154,6 +156,62 @@ function TaskModal({
       }
     } catch (error) {
       console.error('Failed to delete subtask:', error)
+    }
+  }
+  
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File too large (max 10MB)')
+      return
+    }
+    
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('taskId', task.id)
+      
+      const res = await fetch('/api/cyra/attachments', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+      
+      if (res.ok) {
+        const { attachment } = await res.json()
+        setAttachments([...attachments, attachment])
+      } else {
+        const error = await res.json()
+        alert(`Upload failed: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Failed to upload file:', error)
+      alert('Upload failed')
+    } finally {
+      setUploading(false)
+      // Reset input
+      e.target.value = ''
+    }
+  }
+  
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!confirm('Delete this attachment?')) return
+    
+    try {
+      const res = await fetch(`/api/cyra/attachments/${attachmentId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      
+      if (res.ok) {
+        setAttachments(attachments.filter(a => a.id !== attachmentId))
+      }
+    } catch (error) {
+      console.error('Failed to delete attachment:', error)
     }
   }
   
@@ -311,6 +369,68 @@ function TaskModal({
                   {addingSubtask ? '...' : '+'}
                 </button>
               </div>
+            </div>
+          </div>
+          
+          {/* Attachments */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-2">Attachments ({attachments.length})</label>
+            <div className="space-y-2">
+              {/* Attachment list */}
+              {attachments.map((attachment) => (
+                <div key={attachment.id} className="flex items-center gap-2 bg-slate-800 rounded-lg p-2 group">
+                  {/* Image preview or file icon */}
+                  {attachment.mime_type?.startsWith('image/') ? (
+                    <img 
+                      src={attachment.url || ''} 
+                      alt={attachment.file_name}
+                      className="w-10 h-10 object-cover rounded cursor-pointer"
+                      onClick={() => window.open(attachment.url || '', '_blank')}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-slate-700 rounded flex items-center justify-center text-xs">
+                      📄
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <a 
+                      href={attachment.url || '#'} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-cyan-400 hover:text-cyan-300 truncate block"
+                    >
+                      {attachment.file_name}
+                    </a>
+                    <span className="text-xs text-slate-500">
+                      {attachment.file_size ? `${(attachment.file_size / 1024).toFixed(1)} KB` : ''}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteAttachment(attachment.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 text-xs transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              
+              {/* Upload new attachment */}
+              <div className="flex gap-2">
+                <label className="flex-1 cursor-pointer">
+                  <div className={`flex items-center justify-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm hover:border-cyan-500 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <span>📎</span>
+                    <span>{uploading ? 'Uploading...' : 'Upload Image or File'}</span>
+                  </div>
+                  <input
+                    type="file"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                    accept="image/*,application/pdf,.doc,.docx,.txt"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-slate-500">Max 10MB • Images, PDFs, docs supported</p>
             </div>
           </div>
           
@@ -597,8 +717,8 @@ export default function KanbanBoard() {
 
     try {
       const [tasksRes, logsRes, statusRes] = await Promise.all([
-        supabase.from('tasks').select('*, subtasks(*)').eq('user_id', user.id).order('position'),
-        supabase.from('logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('tasks').select('*, subtasks(*), attachments:task_attachments(*)').eq('user_id', user.id).order('position'),
+        supabase.from('logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false}).limit(20),
         supabase.from('status').select('*').eq('user_id', user.id).single(),
       ])
 
