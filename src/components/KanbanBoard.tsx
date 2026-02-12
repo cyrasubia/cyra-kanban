@@ -229,11 +229,11 @@ function TaskModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className="bg-slate-900 rounded-xl w-full max-w-lg border border-slate-700 shadow-2xl"
+        className="bg-slate-900 rounded-xl w-full max-w-lg border border-slate-700 shadow-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-slate-700">
+        <div className="flex justify-between items-center p-4 border-b border-slate-700 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-lg">{task.created_by === 'cyra' ? '🤖' : '👤'}</span>
             <span className="text-slate-400 text-sm">Task Details</span>
@@ -242,7 +242,7 @@ function TaskModal({
         </div>
         
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
           {/* Title */}
           <div>
             <label className="block text-xs text-slate-400 mb-1">Title</label>
@@ -514,7 +514,7 @@ function TaskModal({
         </div>
         
         {/* Footer */}
-        <div className="flex gap-2 p-4 border-t border-slate-700">
+        <div className="flex gap-2 p-4 border-t border-slate-700 flex-shrink-0">
           <button
             onClick={handleDelete}
             className="px-4 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg text-sm transition-colors"
