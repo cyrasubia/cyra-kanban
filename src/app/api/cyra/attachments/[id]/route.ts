@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const API_KEY = process.env.CYRA_TASKS_API_KEY
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+const VICTOR_USER_ID = process.env.VICTOR_USER_ID || '14c09ffa-2671-4e78-8220-4dde396fdf52'
+
+function validateApiKey(request: NextRequest) {
+  if (!API_KEY) return false
+  const header = request.headers.get('Authorization')
+  if (!header?.startsWith('Bearer ')) return false
+  const provided = header.substring(7).trim()
+  return provided === API_KEY
+}
+
+function getServiceSupabase(): SupabaseClient {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set')
+  }
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false }
+  })
+}
 
 // DELETE /api/cyra/attachments/[id] - Delete an attachment
 export async function DELETE(
@@ -10,11 +33,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Check for API key auth first
+    const isApiKey = validateApiKey(request)
+    let supabase: SupabaseClient
+    let userId: string
     
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (isApiKey) {
+      supabase = getServiceSupabase()
+      userId = VICTOR_USER_ID
+    } else {
+      supabase = await createServerClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = user.id
     }
 
     const attachmentId = params.id
@@ -24,7 +57,7 @@ export async function DELETE(
       .from('task_attachments')
       .select('*')
       .eq('id', attachmentId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (!attachment) {
