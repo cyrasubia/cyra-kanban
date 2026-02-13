@@ -629,6 +629,8 @@ function TaskCard({
   onMoveToBlocked,
   onDelete,
   onPin,
+  onArchive,
+  onUnarchive,
   formatTime 
 }: {
   task: Task
@@ -638,6 +640,8 @@ function TaskCard({
   onMoveToBlocked: () => void
   onDelete: () => void
   onPin: () => void
+  onArchive: () => void
+  onUnarchive: () => void
   formatTime: (timestamp: string) => string
 }) {
   const [showActions, setShowActions] = useState(false)
@@ -748,23 +752,44 @@ function TaskCard({
         >
           📌
         </button>
-        {task.column_id !== 'done' && (
+        {task.archived ? (
           <button
-            onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
-            className="p-1.5 bg-green-600/80 hover:bg-green-500 rounded text-[10px] text-white transition-colors touch-manipulation"
-            title="Mark Done"
+            onClick={(e) => { e.stopPropagation(); onUnarchive(); }}
+            className="p-1.5 bg-purple-600/80 hover:bg-purple-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+            title="Unarchive"
           >
-            ✓
+            📤
           </button>
-        )}
-        {task.column_id !== 'blocked' && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onMoveToBlocked(); }}
-            className="p-1.5 bg-orange-600/80 hover:bg-orange-500 rounded text-[10px] text-white transition-colors touch-manipulation"
-            title="Move to Blocked"
-          >
-            🙋
-          </button>
+        ) : (
+          <>
+            {task.column_id === 'done' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                className="p-1.5 bg-purple-600/80 hover:bg-purple-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+                title="Archive"
+              >
+                📦
+              </button>
+            )}
+            {task.column_id !== 'done' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
+                className="p-1.5 bg-green-600/80 hover:bg-green-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+                title="Mark Done"
+              >
+                ✓
+              </button>
+            )}
+            {task.column_id !== 'blocked' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveToBlocked(); }}
+                className="p-1.5 bg-orange-600/80 hover:bg-orange-500 rounded text-[10px] text-white transition-colors touch-manipulation"
+                title="Move to Blocked"
+              >
+                🙋
+              </button>
+            )}
+          </>
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -796,6 +821,7 @@ export default function KanbanBoard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'victor' | 'cyra'>('all')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   
   const supabase = createClient()
   const router = useRouter()
@@ -832,14 +858,44 @@ export default function KanbanBoard() {
       console.error('Failed to fetch data:', e)
     }
   }, [user, supabase])
+  
+  const autoArchiveOldTasks = useCallback(async () => {
+    if (!user) return
+    
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    
+    // Find completed tasks older than 7 days that aren't archived
+    const tasksToArchive = tasks.filter(t => 
+      t.column_id === 'done' && 
+      !t.archived &&
+      new Date(t.updated_at) < sevenDaysAgo
+    )
+    
+    if (tasksToArchive.length > 0) {
+      const now = new Date().toISOString()
+      for (const task of tasksToArchive) {
+        await supabase.from('tasks').update({ 
+          archived: true, 
+          archived_at: now 
+        }).eq('id', task.id)
+      }
+      fetchData()
+    }
+  }, [user, tasks, supabase, fetchData])
 
   useEffect(() => {
     if (user) {
       fetchData()
+      autoArchiveOldTasks() // Run on load
       const interval = setInterval(fetchData, 5000)
-      return () => clearInterval(interval)
+      const archiveInterval = setInterval(autoArchiveOldTasks, 60000) // Check every minute
+      return () => {
+        clearInterval(interval)
+        clearInterval(archiveInterval)
+      }
     }
-  }, [user, fetchData])
+  }, [user, fetchData, autoArchiveOldTasks])
 
   // Subscribe to realtime changes
   useEffect(() => {
@@ -916,6 +972,22 @@ export default function KanbanBoard() {
   
   const togglePin = async (taskId: string, currentPinned: boolean) => {
     await supabase.from('tasks').update({ pinned: !currentPinned }).eq('id', taskId)
+    fetchData()
+  }
+  
+  const archiveTask = async (taskId: string) => {
+    await supabase.from('tasks').update({ 
+      archived: true, 
+      archived_at: new Date().toISOString() 
+    }).eq('id', taskId)
+    fetchData()
+  }
+  
+  const unarchiveTask = async (taskId: string) => {
+    await supabase.from('tasks').update({ 
+      archived: false, 
+      archived_at: null 
+    }).eq('id', taskId)
     fetchData()
   }
   
@@ -1028,40 +1100,55 @@ export default function KanbanBoard() {
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           
-          {/* Assignee Filter - Only show in Kanban view */}
+          {/* Assignee Filter & Archive Toggle - Only show in Kanban view */}
           {viewMode === 'kanban' && (
-            <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+                <button
+                  onClick={() => setAssigneeFilter('all')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                    assigneeFilter === 'all'
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setAssigneeFilter('victor')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                    assigneeFilter === 'victor'
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  <span>👤</span>
+                  <span className="hidden sm:inline">Victor</span>
+                </button>
+                <button
+                  onClick={() => setAssigneeFilter('cyra')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                    assigneeFilter === 'cyra'
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  <span>🤖</span>
+                  <span className="hidden sm:inline">Cyra</span>
+                </button>
+              </div>
+              
               <button
-                onClick={() => setAssigneeFilter('all')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  assigneeFilter === 'all'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
+                onClick={() => setShowArchived(!showArchived)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                  showArchived
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-300'
                 }`}
+                title={showArchived ? 'Hide archived tasks' : 'Show archived tasks'}
               >
-                All
-              </button>
-              <button
-                onClick={() => setAssigneeFilter('victor')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                  assigneeFilter === 'victor'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                <span>👤</span>
-                <span className="hidden sm:inline">Victor</span>
-              </button>
-              <button
-                onClick={() => setAssigneeFilter('cyra')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                  assigneeFilter === 'cyra'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                <span>🤖</span>
-                <span className="hidden sm:inline">Cyra</span>
+                <span>📦</span>
+                <span className="hidden sm:inline">{showArchived ? 'Archive' : 'Archive'}</span>
               </button>
             </div>
           )}
@@ -1139,6 +1226,7 @@ export default function KanbanBoard() {
                 {columns.map(column => {
                   const columnTasks = tasks
                     .filter(t => t.column_id === column.id)
+                    .filter(t => showArchived ? true : !t.archived) // Hide archived unless viewing archive
                     .filter(t => assigneeFilter === 'all' || t.assigned_to === assigneeFilter)
                     .filter(t => {
                       if (!selectedCategory) return true
@@ -1203,6 +1291,8 @@ export default function KanbanBoard() {
                         onMarkDone={() => moveTask(task.id, 'done')}
                         onMoveToBlocked={() => moveTask(task.id, 'blocked')}
                         onPin={() => togglePin(task.id, task.pinned || false)}
+                        onArchive={() => archiveTask(task.id)}
+                        onUnarchive={() => unarchiveTask(task.id)}
                         onDelete={() => {
                           if (confirm('Delete this task?')) {
                             deleteTaskWithSync(task.id)
