@@ -1137,6 +1137,9 @@ export default function KanbanBoard() {
                         case 'personal':
                           // Personal = task_type is 'task' OR (no task_type AND no product AND no client)
                           return t.task_type === 'task' || (!t.task_type && !t.product_id && !t.client_id)
+                        case 'insiderclicks':
+                          // Insider Clicks = all tasks with any client assigned
+                          return !!t.client_id
                         case 'openclaw':
                           return t.product_id && t.product?.name?.toLowerCase().includes('openclaw')
                         case 'housefly':
