@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Task } from '@/types/kanban'
 
@@ -45,38 +45,36 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     }
   }, [userId, supabase])
 
+  // Memoize active tasks to prevent recalculation on every render
+  const activeTasks = useMemo(() => tasks.filter(t => !t.archived), [tasks])
+
+  // Memoize category counts to prevent recalculation on hover
+  const categoryCounts = useMemo(() => ({
+    personal: activeTasks.filter(t => t.task_type === 'task' || (!t.task_type && !t.product_id && !t.client_id)).length,
+    insiderclicks: activeTasks.filter(t => t.client_id).length,
+    'insiderclicks-business': activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('insider clicks')).length,
+    victoryhomebuyers: activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('victory home buyers')).length,
+    openclaw: activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length,
+    housefly: activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('house fly')).length,
+    initiative: activeTasks.filter(t => t.task_type === 'initiative').length,
+    event: activeTasks.filter(t => t.task_type === 'event').length,
+  }), [activeTasks])
+
+  // Memoize client counts
+  const clientCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    clients.forEach(client => {
+      counts[client.id] = activeTasks.filter(t => t.client_id === client.id).length
+    })
+    return counts
+  }, [activeTasks, clients])
+
   // Count tasks per category (only active, non-archived tasks)
   const getCategoryCount = (categoryType: CategoryType, categoryValue?: string) => {
-    // First filter out archived tasks
-    const activeTasks = tasks.filter(t => !t.archived)
-    
-    switch (categoryType) {
-      case 'client':
-        return activeTasks.filter(t => t.client_id === categoryValue).length
-      case 'personal':
-        // Personal = task_type is 'task' OR (no task_type AND no product AND no client)
-        return activeTasks.filter(t => 
-          t.task_type === 'task' || 
-          (!t.task_type && !t.product_id && !t.client_id)
-        ).length
-      case 'insiderclicks':
-        // Insider Clicks (Clients) = all tasks with any client assigned
-        return activeTasks.filter(t => t.client_id).length
-      case 'insiderclicks-business':
-        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('insider clicks')).length
-      case 'victoryhomebuyers':
-        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('victory home buyers')).length
-      case 'openclaw':
-        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length
-      case 'housefly':
-        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('house fly')).length
-      case 'initiative':
-        return activeTasks.filter(t => t.task_type === 'initiative').length
-      case 'event':
-        return activeTasks.filter(t => t.task_type === 'event').length
-      default:
-        return 0
+    if (categoryType === 'client' && categoryValue) {
+      return clientCounts[categoryValue] || 0
     }
+    return categoryCounts[categoryType as keyof typeof categoryCounts] || 0
   }
 
   const CategoryButton = ({ 
@@ -97,7 +95,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return (
       <button
         onClick={() => onSelectCategory(isSelected ? null : id)}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between will-change-auto ${
           isSelected
             ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
             : 'hover:bg-slate-800 text-slate-300'
