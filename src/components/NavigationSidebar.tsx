@@ -19,7 +19,7 @@ interface NavigationSidebarProps {
   userId: string
 }
 
-type CategoryType = 'client' | 'personal' | 'openclaw' | 'housefly' | 'initiative' | 'event' | 'insiderclicks'
+type CategoryType = 'client' | 'personal' | 'openclaw' | 'housefly' | 'initiative' | 'event' | 'insiderclicks' | 'insiderclicks-business' | 'victoryhomebuyers'
 
 export default function NavigationSidebar({ tasks, selectedCategory, onSelectCategory, userId }: NavigationSidebarProps) {
   const [clients, setClients] = useState<Client[]>([])
@@ -57,8 +57,12 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
           (!t.task_type && !t.product_id && !t.client_id)
         ).length
       case 'insiderclicks':
-        // Insider Clicks = all tasks with any client assigned
+        // Insider Clicks (Clients) = all tasks with any client assigned
         return tasks.filter(t => t.client_id).length
+      case 'insiderclicks-business':
+        return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('insider clicks')).length
+      case 'victoryhomebuyers':
+        return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('victory home buyers')).length
       case 'openclaw':
         return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length
       case 'housefly':
@@ -147,13 +151,6 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
             type="category"
           />
           <CategoryButton
-            id="insiderclicks"
-            label="Insider Clicks"
-            icon="💼"
-            count={getCategoryCount('insiderclicks')}
-            type="category"
-          />
-          <CategoryButton
             id="initiative"
             label="Initiatives"
             icon="🎯"
@@ -170,12 +167,33 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
         </div>
       </div>
 
-      {/* Products Section */}
+      {/* Businesses Section */}
       <div className="mb-4">
         <h3 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
-          Products
+          Businesses
         </h3>
         <div className="space-y-1">
+          <CategoryButton
+            id="insiderclicks"
+            label="IC (Clients)"
+            icon="💼"
+            count={getCategoryCount('insiderclicks')}
+            type="category"
+          />
+          <CategoryButton
+            id="insiderclicks-business"
+            label="IC Marketing"
+            icon="🏢"
+            count={getCategoryCount('insiderclicks-business')}
+            type="category"
+          />
+          <CategoryButton
+            id="victoryhomebuyers"
+            label="Victory Home Buyers"
+            icon="🏘️"
+            count={getCategoryCount('victoryhomebuyers')}
+            type="category"
+          />
           <CategoryButton
             id="housefly"
             label="House Fly"
