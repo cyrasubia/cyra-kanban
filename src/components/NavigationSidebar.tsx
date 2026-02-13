@@ -90,30 +90,29 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     count: number
     type?: 'client' | 'category'
   }) => {
+    const [isHovered, setIsHovered] = useState(false)
     const isSelected = selectedCategory === id
+    
+    const backgroundColor = isSelected 
+      ? 'rgba(8, 145, 178, 0.2)' 
+      : isHovered 
+      ? 'rgb(30, 41, 59)' 
+      : 'transparent'
     
     return (
       <button
         onClick={() => onSelectCategory(isSelected ? null : id)}
         className={`w-full text-left px-3 py-2 rounded-lg flex items-center justify-between ${
           isSelected
-            ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
+            ? 'border border-cyan-500/50 text-cyan-300'
             : 'text-slate-300'
         }`}
         style={{
           transition: 'background-color 150ms ease-out',
-          backgroundColor: isSelected ? 'rgba(8, 145, 178, 0.2)' : 'transparent',
+          backgroundColor,
         }}
-        onMouseEnter={(e) => {
-          if (!isSelected) {
-            e.currentTarget.style.backgroundColor = 'rgb(30, 41, 59)'
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isSelected) {
-            e.currentTarget.style.backgroundColor = 'transparent'
-          }
-        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm flex-shrink-0">{icon}</span>
