@@ -562,6 +562,17 @@ function TaskCard({
   const [showActions, setShowActions] = useState(false)
   const priorityClass = task.priority ? priorityColors[task.priority] : 'border-l-slate-600'
   
+  // Task type color coding
+  const typeColors: Record<string, string> = {
+    client: 'border-l-purple-500',
+    feature: 'border-l-green-500',
+    initiative: 'border-l-orange-500',
+    event: 'border-l-blue-500',
+    reminder: 'border-l-yellow-500',
+    task: 'border-l-slate-600'
+  }
+  const typeClass = task.task_type ? typeColors[task.task_type] : typeColors['task']
+  
   return (
     <div
       draggable
@@ -569,7 +580,7 @@ function TaskCard({
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onClick={onClick}
-      className={`task-card bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${priorityClass} border border-slate-700 hover:border-cyan-500/50 transition-all relative`}
+      className={`task-card bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${typeClass} border border-slate-700 hover:border-cyan-500/50 transition-all relative`}
     >
       <div className="flex justify-between items-start">
         <span className="text-sm pr-6">{task.title}</span>
@@ -693,6 +704,7 @@ export default function KanbanBoard() {
   const [isDateDetailModalOpen, setIsDateDetailModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'victor' | 'cyra'>('all')
+  const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'client' | 'feature' | 'initiative' | 'event' | 'task'>('all')
   
   const supabase = createClient()
   const router = useRouter()
@@ -717,7 +729,7 @@ export default function KanbanBoard() {
 
     try {
       const [tasksRes, logsRes, statusRes] = await Promise.all([
-        supabase.from('tasks').select('*, subtasks(*), attachments:task_attachments(*)').eq('user_id', user.id).order('position'),
+        supabase.from('tasks').select('*, subtasks(*), attachments:task_attachments(*), client:clients(*), product:products(*)').eq('user_id', user.id).order('position'),
         supabase.from('logs').select('*').eq('user_id', user.id).order('created_at', { ascending: false}).limit(20),
         supabase.from('status').select('*').eq('user_id', user.id).single(),
       ])
@@ -920,41 +932,98 @@ export default function KanbanBoard() {
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           
-          {/* Assignee Filter - Only show in Kanban view */}
+          {/* Filters - Only show in Kanban view */}
           {viewMode === 'kanban' && (
-            <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
-              <button
-                onClick={() => setAssigneeFilter('all')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  assigneeFilter === 'all'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setAssigneeFilter('victor')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                  assigneeFilter === 'victor'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                <span>👤</span>
-                <span className="hidden sm:inline">Victor</span>
-              </button>
-              <button
-                onClick={() => setAssigneeFilter('cyra')}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                  assigneeFilter === 'cyra'
-                    ? 'bg-cyan-600 text-white'
-                    : 'text-slate-400 hover:text-slate-300'
-                }`}
-              >
-                <span>🤖</span>
-                <span className="hidden sm:inline">Cyra</span>
-              </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Assignee Filter */}
+              <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+                <button
+                  onClick={() => setAssigneeFilter('all')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                    assigneeFilter === 'all'
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setAssigneeFilter('victor')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                    assigneeFilter === 'victor'
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  <span>👤</span>
+                  <span className="hidden sm:inline">Victor</span>
+                </button>
+                <button
+                  onClick={() => setAssigneeFilter('cyra')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                    assigneeFilter === 'cyra'
+                      ? 'bg-cyan-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  <span>🤖</span>
+                  <span className="hidden sm:inline">Cyra</span>
+                </button>
+              </div>
+              
+              {/* Task Type Filter */}
+              <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+                <button
+                  onClick={() => setTaskTypeFilter('all')}
+                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    taskTypeFilter === 'all'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setTaskTypeFilter('client')}
+                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    taskTypeFilter === 'client'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  👔
+                </button>
+                <button
+                  onClick={() => setTaskTypeFilter('feature')}
+                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    taskTypeFilter === 'feature'
+                      ? 'bg-green-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  ⚙️
+                </button>
+                <button
+                  onClick={() => setTaskTypeFilter('initiative')}
+                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    taskTypeFilter === 'initiative'
+                      ? 'bg-orange-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  🎯
+                </button>
+                <button
+                  onClick={() => setTaskTypeFilter('event')}
+                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    taskTypeFilter === 'event'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  📅
+                </button>
+              </div>
             </div>
           )}
           
@@ -1018,6 +1087,7 @@ export default function KanbanBoard() {
                   const columnTasks = tasks
                     .filter(t => t.column_id === column.id)
                     .filter(t => assigneeFilter === 'all' || t.assigned_to === assigneeFilter)
+                    .filter(t => taskTypeFilter === 'all' || t.task_type === taskTypeFilter || (!t.task_type && taskTypeFilter === 'task'))
                   return (
                     <div
                       key={column.id}
