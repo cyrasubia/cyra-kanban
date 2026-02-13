@@ -45,32 +45,35 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     }
   }, [userId, supabase])
 
-  // Count tasks per category
+  // Count tasks per category (only active, non-archived tasks)
   const getCategoryCount = (categoryType: CategoryType, categoryValue?: string) => {
+    // First filter out archived tasks
+    const activeTasks = tasks.filter(t => !t.archived)
+    
     switch (categoryType) {
       case 'client':
-        return tasks.filter(t => t.client_id === categoryValue).length
+        return activeTasks.filter(t => t.client_id === categoryValue).length
       case 'personal':
         // Personal = task_type is 'task' OR (no task_type AND no product AND no client)
-        return tasks.filter(t => 
+        return activeTasks.filter(t => 
           t.task_type === 'task' || 
           (!t.task_type && !t.product_id && !t.client_id)
         ).length
       case 'insiderclicks':
         // Insider Clicks (Clients) = all tasks with any client assigned
-        return tasks.filter(t => t.client_id).length
+        return activeTasks.filter(t => t.client_id).length
       case 'insiderclicks-business':
-        return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('insider clicks')).length
+        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('insider clicks')).length
       case 'victoryhomebuyers':
-        return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('victory home buyers')).length
+        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('victory home buyers')).length
       case 'openclaw':
-        return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length
+        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length
       case 'housefly':
-        return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('house fly')).length
+        return activeTasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('house fly')).length
       case 'initiative':
-        return tasks.filter(t => t.task_type === 'initiative').length
+        return activeTasks.filter(t => t.task_type === 'initiative').length
       case 'event':
-        return tasks.filter(t => t.task_type === 'event').length
+        return activeTasks.filter(t => t.task_type === 'event').length
       default:
         return 0
     }
