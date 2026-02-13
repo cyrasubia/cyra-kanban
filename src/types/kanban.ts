@@ -59,6 +59,7 @@ export type Task = {
   updated_at: string
   created_by: 'victor' | 'cyra'
   assigned_to?: 'victor' | 'cyra'
+  pinned?: boolean
   
   // Google Calendar Sync fields
   google_calendar_event_id?: string | null

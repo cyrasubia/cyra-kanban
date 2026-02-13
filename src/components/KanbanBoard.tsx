@@ -628,6 +628,7 @@ function TaskCard({
   onMarkDone,
   onMoveToBlocked,
   onDelete,
+  onPin,
   formatTime 
 }: {
   task: Task
@@ -636,6 +637,7 @@ function TaskCard({
   onMarkDone: () => void
   onMoveToBlocked: () => void
   onDelete: () => void
+  onPin: () => void
   formatTime: (timestamp: string) => string
 }) {
   const [showActions, setShowActions] = useState(false)
@@ -659,10 +661,13 @@ function TaskCard({
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onClick={onClick}
-      className={`task-card bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${typeClass} border border-slate-700 hover:border-cyan-500/50 transition-all relative`}
+      className={`task-card bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750 group border-l-4 ${typeClass} border ${task.pinned ? 'border-yellow-500/50 ring-1 ring-yellow-500/30' : 'border-slate-700'} hover:border-cyan-500/50 transition-all relative`}
     >
       <div className="flex justify-between items-start">
-        <span className="text-sm pr-6">{task.title}</span>
+        <div className="flex items-center gap-1.5">
+          {task.pinned && <span className="text-yellow-500 text-xs">📌</span>}
+          <span className="text-sm pr-6">{task.title}</span>
+        </div>
       </div>
       
       {task.description && (
@@ -736,6 +741,13 @@ function TaskCard({
         className={`absolute top-2 right-2 flex gap-1 ${showActions ? 'opacity-100' : 'opacity-0 lg:opacity-0'} lg:group-hover:opacity-100 transition-opacity`}
         onClick={e => e.stopPropagation()}
       >
+        <button
+          onClick={(e) => { e.stopPropagation(); onPin(); }}
+          className={`p-1.5 ${task.pinned ? 'bg-yellow-600/80 hover:bg-yellow-500' : 'bg-slate-600/80 hover:bg-slate-500'} rounded text-[10px] text-white transition-colors touch-manipulation`}
+          title={task.pinned ? "Unpin" : "Pin to top"}
+        >
+          📌
+        </button>
         {task.column_id !== 'done' && (
           <button
             onClick={(e) => { e.stopPropagation(); onMarkDone(); }}
@@ -899,6 +911,11 @@ export default function KanbanBoard() {
       }
     }
     
+    fetchData()
+  }
+  
+  const togglePin = async (taskId: string, currentPinned: boolean) => {
+    await supabase.from('tasks').update({ pinned: !currentPinned }).eq('id', taskId)
     fetchData()
   }
   
@@ -1156,6 +1173,13 @@ export default function KanbanBoard() {
                           return true
                       }
                     })
+                    .sort((a, b) => {
+                      // Pinned tasks first
+                      if (a.pinned && !b.pinned) return -1
+                      if (!a.pinned && b.pinned) return 1
+                      // Then by position
+                      return a.position - b.position
+                    })
                   return (
                     <div
                       key={column.id}
@@ -1178,6 +1202,7 @@ export default function KanbanBoard() {
                         onClick={() => setSelectedTask(task)}
                         onMarkDone={() => moveTask(task.id, 'done')}
                         onMoveToBlocked={() => moveTask(task.id, 'blocked')}
+                        onPin={() => togglePin(task.id, task.pinned || false)}
                         onDelete={() => {
                           if (confirm('Delete this task?')) {
                             deleteTaskWithSync(task.id)
