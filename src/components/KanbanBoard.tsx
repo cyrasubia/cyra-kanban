@@ -7,6 +7,7 @@ import { Calendar, RefreshCw, CheckCircle, AlertCircle, Repeat, Sparkles } from 
 import CalendarView, { ViewToggle } from '@/components/CalendarView'
 import CreateTaskModal from '@/components/CreateTaskModal'
 import DateDetailModal from '@/components/DateDetailModal'
+import ClientsWidget from '@/components/ClientsWidget'
 import { getRecurrenceDescription } from '@/lib/recurrence/utils'
 import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
@@ -705,6 +706,7 @@ export default function KanbanBoard() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'victor' | 'cyra'>('all')
   const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'client' | 'feature' | 'initiative' | 'event' | 'task'>('all')
+  const [clientFilter, setClientFilter] = useState<string | null>(null)
   
   const supabase = createClient()
   const router = useRouter()
@@ -1051,7 +1053,21 @@ export default function KanbanBoard() {
 
       <div className="relative">
         {/* Main Content - Kanban or Calendar View */}
-        <div className="col-span-12">
+        <div className={viewMode === 'kanban' ? 'lg:grid lg:grid-cols-12 lg:gap-6' : ''}>
+          {/* Clients Widget - Only in Kanban view */}
+          {viewMode === 'kanban' && (
+            <div className="lg:col-span-3 mb-6 lg:mb-0">
+              <ClientsWidget
+                tasks={tasks}
+                selectedClientId={clientFilter}
+                onSelectClient={setClientFilter}
+                userId={user?.id || ''}
+              />
+            </div>
+          )}
+          
+          {/* Main content area */}
+          <div className={viewMode === 'kanban' ? 'lg:col-span-9' : ''}>
           {viewMode === 'calendar' ? (
             /* Calendar View */
             <CalendarView
@@ -1088,6 +1104,7 @@ export default function KanbanBoard() {
                     .filter(t => t.column_id === column.id)
                     .filter(t => assigneeFilter === 'all' || t.assigned_to === assigneeFilter)
                     .filter(t => taskTypeFilter === 'all' || t.task_type === taskTypeFilter || (!t.task_type && taskTypeFilter === 'task'))
+                    .filter(t => !clientFilter || t.client_id === clientFilter)
                   return (
                     <div
                       key={column.id}
@@ -1155,6 +1172,7 @@ export default function KanbanBoard() {
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
       
