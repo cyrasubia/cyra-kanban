@@ -97,7 +97,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return (
       <button
         onClick={() => onSelectCategory(isSelected ? null : id)}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between group ${
+        className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
           isSelected
             ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
             : 'hover:bg-slate-800 text-slate-300'
@@ -111,7 +111,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
           <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
             isSelected
               ? 'bg-cyan-500/30 text-cyan-200'
-              : 'bg-slate-700 text-slate-400 group-hover:bg-slate-600'
+              : 'bg-slate-700 text-slate-400'
           }`}>
             {count}
           </span>
