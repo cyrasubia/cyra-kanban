@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Plus, Calendar as CalendarIcon, Clock, Repeat, CheckSquare, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
+import { createClient } from '@/lib/supabase/client'
 import type { Task, RecurrencePattern, RecurrenceConfig } from '@/types/kanban'
 
 interface CreateTaskModalProps {
@@ -94,6 +95,11 @@ export default function CreateTaskModal({
   const [saving, setSaving] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
   const [dueTime, setDueTime] = useState('')
+  const [taskType, setTaskType] = useState<'task' | 'initiative' | 'event'>('task')
+  const [clientId, setClientId] = useState('')
+  const [productId, setProductId] = useState('')
+  const [clients, setClients] = useState<Array<{id: string, name: string}>>([])
+  const [products, setProducts] = useState<Array<{id: string, name: string}>>([])
   
   // Recurrence state
   const [recurrencePattern, setRecurrencePattern] = useState<RecurrencePattern>('weekly')
@@ -102,6 +108,21 @@ export default function CreateTaskModal({
   const [endType, setEndType] = useState<'never' | 'on' | 'after'>('never')
   const [endDate, setEndDate] = useState('')
   const [occurrenceCount, setOccurrenceCount] = useState(10)
+  
+  const supabase = createClient()
+  
+  // Fetch clients and products
+  useEffect(() => {
+    const fetchOptions = async () => {
+      const [clientsRes, productsRes] = await Promise.all([
+        supabase.from('clients').select('id, name').order('name'),
+        supabase.from('products').select('id, name').order('name')
+      ])
+      if (clientsRes.data) setClients(clientsRes.data)
+      if (productsRes.data) setProducts(productsRes.data)
+    }
+    fetchOptions()
+  }, [supabase])
 
   // Reset form when modal opens
   useEffect(() => {
@@ -120,6 +141,9 @@ export default function CreateTaskModal({
       setSaving(false)
       setShowTimePicker(false)
       setDueTime('')
+      setTaskType('task')
+      setClientId('')
+      setProductId('')
       
       // Set initial date if provided
       if (initialDate) {
@@ -159,6 +183,9 @@ export default function CreateTaskModal({
       priority,
       column_id: columnId,
       event_date: finalDueDate,
+      task_type: taskType,
+      client_id: clientId || null,
+      product_id: productId || null,
     }
 
     // Add recurrence if enabled
@@ -313,6 +340,50 @@ export default function CreateTaskModal({
                 </button>
               ))}
             </div>
+          </div>
+          
+          {/* Category */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">Category</label>
+            <select
+              value={taskType}
+              onChange={e => setTaskType(e.target.value as 'task' | 'initiative' | 'event')}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 transition-colors"
+            >
+              <option value="task">👤 Personal</option>
+              <option value="initiative">🎯 Initiative</option>
+              <option value="event">📅 Event</option>
+            </select>
+          </div>
+          
+          {/* Client */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">Client (Optional)</label>
+            <select
+              value={clientId}
+              onChange={e => setClientId(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 transition-colors"
+            >
+              <option value="">None</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>👔 {client.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Product */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5">Product (Optional)</label>
+            <select
+              value={productId}
+              onChange={e => setProductId(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 transition-colors"
+            >
+              <option value="">None</option>
+              {products.map(product => (
+                <option key={product.id} value={product.id}>{product.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Recurrence Section */}

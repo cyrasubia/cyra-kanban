@@ -67,12 +67,35 @@ function TaskModal({
     return `${year}-${month}-${day}T${hours}:${minutes}`
   })
   const [assignedTo, setAssignedTo] = useState<'victor' | 'cyra'>(task.assigned_to || task.created_by)
+  const [taskType, setTaskType] = useState<'task' | 'initiative' | 'event' | null>(() => {
+    // Map old/invalid types to valid ones
+    if (task.task_type === 'client' || task.task_type === 'feature' || task.task_type === 'reminder') return null
+    return task.task_type || 'task'
+  })
+  const [clientId, setClientId] = useState<string>(task.client_id || '')
+  const [productId, setProductId] = useState<string>(task.product_id || '')
   const [saving, setSaving] = useState(false)
   const [subtasks, setSubtasks] = useState(task.subtasks || [])
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const [addingSubtask, setAddingSubtask] = useState(false)
   const [attachments, setAttachments] = useState(task.attachments || [])
   const [uploading, setUploading] = useState(false)
+  const [clients, setClients] = useState<Array<{id: string, name: string}>>([])
+  const [products, setProducts] = useState<Array<{id: string, name: string}>>([])
+  const supabase = createClient()
+  
+  // Fetch clients and products on mount
+  useEffect(() => {
+    const fetchOptions = async () => {
+      const [clientsRes, productsRes] = await Promise.all([
+        supabase.from('clients').select('id, name').order('name'),
+        supabase.from('products').select('id, name').order('name')
+      ])
+      if (clientsRes.data) setClients(clientsRes.data)
+      if (productsRes.data) setProducts(productsRes.data)
+    }
+    fetchOptions()
+  }, [supabase])
 
   const handleSave = async () => {
     setSaving(true)
@@ -90,7 +113,16 @@ function TaskModal({
       const utcDate = new Date(Date.UTC(year, month - 1, day, hours + 6, minutes))
       eventDateValue = utcDate.toISOString()
     }
-    await onUpdate(task.id, { title, description, priority, event_date: eventDateValue, assigned_to: assignedTo })
+    await onUpdate(task.id, { 
+      title, 
+      description, 
+      priority, 
+      event_date: eventDateValue, 
+      assigned_to: assignedTo,
+      task_type: taskType || undefined,
+      client_id: clientId || null,
+      product_id: productId || null
+    })
     setSaving(false)
     onClose()
   }
@@ -324,6 +356,50 @@ function TaskModal({
                 <span>Cyra</span>
               </button>
             </div>
+          </div>
+          
+          {/* Category */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Category</label>
+            <select
+              value={taskType || ''}
+              onChange={e => setTaskType(e.target.value as 'task' | 'initiative' | 'event' | null || null)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 text-slate-300"
+            >
+              <option value="task">👤 Personal</option>
+              <option value="initiative">🎯 Initiative</option>
+              <option value="event">📅 Event</option>
+            </select>
+          </div>
+          
+          {/* Client */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Client (Optional)</label>
+            <select
+              value={clientId}
+              onChange={e => setClientId(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 text-slate-300"
+            >
+              <option value="">None</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>👔 {client.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Product */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Product (Optional)</label>
+            <select
+              value={productId}
+              onChange={e => setProductId(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 text-slate-300"
+            >
+              <option value="">None</option>
+              {products.map(product => (
+                <option key={product.id} value={product.id}>{product.name}</option>
+              ))}
+            </select>
           </div>
           
           {/* Subtasks */}
