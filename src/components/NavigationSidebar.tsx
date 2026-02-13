@@ -77,7 +77,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return categoryCounts[categoryType as keyof typeof categoryCounts] || 0
   }
 
-  const CategoryButton = memo(({ 
+  const CategoryButton = ({ 
     id, 
     label, 
     icon, 
@@ -90,29 +90,16 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     count: number
     type?: 'client' | 'category'
   }) => {
-    const [isHovered, setIsHovered] = useState(false)
     const isSelected = selectedCategory === id
-    
-    const backgroundColor = isSelected 
-      ? 'rgba(8, 145, 178, 0.2)' 
-      : isHovered 
-      ? 'rgb(30, 41, 59)' 
-      : 'transparent'
     
     return (
       <button
         onClick={() => onSelectCategory(isSelected ? null : id)}
-        className={`w-full text-left px-3 py-2 rounded-lg flex items-center justify-between ${
+        className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-150 flex items-center justify-between ${
           isSelected
-            ? 'border border-cyan-500/50 text-cyan-300'
-            : 'text-slate-300'
+            ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
+            : 'hover:bg-slate-800 text-slate-300 border border-transparent'
         }`}
-        style={{
-          transition: 'background-color 150ms ease-out',
-          backgroundColor,
-        }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm flex-shrink-0">{icon}</span>
@@ -129,7 +116,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
         )}
       </button>
     )
-  })
+  }
 
   if (loading) {
     return (
