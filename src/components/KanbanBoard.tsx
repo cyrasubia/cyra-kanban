@@ -1135,7 +1135,8 @@ export default function KanbanBoard() {
                       // Handle category filtering
                       switch (selectedCategory) {
                         case 'personal':
-                          return t.task_type === 'task' || !t.task_type
+                          // Personal = task_type is 'task' OR (no task_type AND no product AND no client)
+                          return t.task_type === 'task' || (!t.task_type && !t.product_id && !t.client_id)
                         case 'openclaw':
                           return t.product_id && t.product?.name?.toLowerCase().includes('openclaw')
                         case 'housefly':

@@ -51,7 +51,11 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
       case 'client':
         return tasks.filter(t => t.client_id === categoryValue).length
       case 'personal':
-        return tasks.filter(t => t.task_type === 'task' || !t.task_type).length
+        // Personal = task_type is 'task' OR (no task_type AND no product AND no client)
+        return tasks.filter(t => 
+          t.task_type === 'task' || 
+          (!t.task_type && !t.product_id && !t.client_id)
+        ).length
       case 'openclaw':
         return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length
       case 'housefly':
