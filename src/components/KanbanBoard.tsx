@@ -70,7 +70,8 @@ function TaskModal({
   const [taskType, setTaskType] = useState<'task' | 'initiative' | 'event' | null>(() => {
     // Map old/invalid types to valid ones
     if (task.task_type === 'client' || task.task_type === 'feature' || task.task_type === 'reminder') return null
-    return task.task_type || 'task'
+    // If no task_type, return null (don't default to 'task')
+    return task.task_type || null
   })
   const [clientId, setClientId] = useState<string>(task.client_id || '')
   const [productId, setProductId] = useState<string>(task.product_id || '')
@@ -119,7 +120,7 @@ function TaskModal({
       priority, 
       event_date: eventDateValue, 
       assigned_to: assignedTo,
-      task_type: taskType || undefined,
+      task_type: taskType,
       client_id: clientId || null,
       product_id: productId || null
     })

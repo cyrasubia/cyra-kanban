@@ -80,7 +80,7 @@ export type Task = {
   attachments?: TaskAttachment[]
   
   // Task Type and Entity References
-  task_type?: TaskType
+  task_type?: TaskType | null
   client_id?: string | null
   product_id?: string | null
   
