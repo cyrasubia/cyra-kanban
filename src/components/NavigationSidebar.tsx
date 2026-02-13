@@ -19,7 +19,7 @@ interface NavigationSidebarProps {
   userId: string
 }
 
-type CategoryType = 'client' | 'personal' | 'openclaw' | 'shopping' | 'housefly' | 'initiative' | 'event'
+type CategoryType = 'client' | 'personal' | 'openclaw' | 'housefly' | 'initiative' | 'event'
 
 export default function NavigationSidebar({ tasks, selectedCategory, onSelectCategory, userId }: NavigationSidebarProps) {
   const [clients, setClients] = useState<Client[]>([])
@@ -54,8 +54,6 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
         return tasks.filter(t => t.task_type === 'task' || !t.task_type).length
       case 'openclaw':
         return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('openclaw')).length
-      case 'shopping':
-        return tasks.filter(t => t.title?.toLowerCase().includes('shopping') || t.description?.toLowerCase().includes('shopping')).length
       case 'housefly':
         return tasks.filter(t => t.product_id && t.product?.name?.toLowerCase().includes('house fly')).length
       case 'initiative':
@@ -139,13 +137,6 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
             label="Personal"
             icon="👤"
             count={getCategoryCount('personal')}
-            type="category"
-          />
-          <CategoryButton
-            id="shopping"
-            label="Shopping List"
-            icon="🛒"
-            count={getCategoryCount('shopping')}
             type="category"
           />
           <CategoryButton

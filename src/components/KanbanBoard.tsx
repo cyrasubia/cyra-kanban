@@ -360,12 +360,13 @@ function TaskModal({
           
           {/* Category */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Category</label>
+            <label className="block text-xs text-slate-400 mb-1">Category (Optional)</label>
             <select
               value={taskType || ''}
-              onChange={e => setTaskType(e.target.value as 'task' | 'initiative' | 'event' | null || null)}
+              onChange={e => setTaskType((e.target.value || null) as 'task' | 'initiative' | 'event' | null)}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm outline-none focus:border-cyan-500 text-slate-300"
             >
+              <option value="">None (No Category)</option>
               <option value="task">👤 Personal</option>
               <option value="initiative">🎯 Initiative</option>
               <option value="event">📅 Event</option>
@@ -1134,8 +1135,6 @@ export default function KanbanBoard() {
                       switch (selectedCategory) {
                         case 'personal':
                           return t.task_type === 'task' || !t.task_type
-                        case 'shopping':
-                          return t.title?.toLowerCase().includes('shopping') || t.description?.toLowerCase().includes('shopping')
                         case 'openclaw':
                           return t.product_id && t.product?.name?.toLowerCase().includes('openclaw')
                         case 'housefly':

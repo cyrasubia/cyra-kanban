@@ -95,7 +95,7 @@ export default function CreateTaskModal({
   const [saving, setSaving] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
   const [dueTime, setDueTime] = useState('')
-  const [taskType, setTaskType] = useState<'task' | 'initiative' | 'event'>('task')
+  const [taskType, setTaskType] = useState<'task' | 'initiative' | 'event' | null>('task')
   const [clientId, setClientId] = useState('')
   const [productId, setProductId] = useState('')
   const [clients, setClients] = useState<Array<{id: string, name: string}>>([])
@@ -141,7 +141,7 @@ export default function CreateTaskModal({
       setSaving(false)
       setShowTimePicker(false)
       setDueTime('')
-      setTaskType('task')
+      setTaskType(null)
       setClientId('')
       setProductId('')
       
@@ -183,7 +183,7 @@ export default function CreateTaskModal({
       priority,
       column_id: columnId,
       event_date: finalDueDate,
-      task_type: taskType,
+      task_type: taskType || undefined,
       client_id: clientId || null,
       product_id: productId || null,
     }
@@ -344,12 +344,13 @@ export default function CreateTaskModal({
           
           {/* Category */}
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Category</label>
+            <label className="block text-xs text-slate-400 mb-1.5">Category (Optional)</label>
             <select
-              value={taskType}
-              onChange={e => setTaskType(e.target.value as 'task' | 'initiative' | 'event')}
+              value={taskType || ''}
+              onChange={e => setTaskType((e.target.value || null) as 'task' | 'initiative' | 'event' | null)}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 transition-colors"
             >
+              <option value="">None (No Category)</option>
               <option value="task">👤 Personal</option>
               <option value="initiative">🎯 Initiative</option>
               <option value="event">📅 Event</option>
