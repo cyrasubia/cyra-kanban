@@ -77,7 +77,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return categoryCounts[categoryType as keyof typeof categoryCounts] || 0
   }
 
-  const CategoryButton = ({ 
+  const CategoryButton = memo(({ 
     id, 
     label, 
     icon, 
@@ -95,11 +95,25 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return (
       <button
         onClick={() => onSelectCategory(isSelected ? null : id)}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between will-change-auto ${
+        className={`w-full text-left px-3 py-2 rounded-lg flex items-center justify-between ${
           isSelected
             ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
-            : 'hover:bg-slate-800 text-slate-300'
+            : 'text-slate-300'
         }`}
+        style={{
+          transition: 'background-color 150ms ease-out',
+          backgroundColor: isSelected ? 'rgba(8, 145, 178, 0.2)' : 'transparent',
+        }}
+        onMouseEnter={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.backgroundColor = 'rgb(30, 41, 59)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isSelected) {
+            e.currentTarget.style.backgroundColor = 'transparent'
+          }
+        }}
       >
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm flex-shrink-0">{icon}</span>
@@ -116,7 +130,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
         )}
       </button>
     )
-  }
+  })
 
   if (loading) {
     return (
