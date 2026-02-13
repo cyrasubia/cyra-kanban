@@ -7,7 +7,7 @@ import { Calendar, RefreshCw, CheckCircle, AlertCircle, Repeat, Sparkles } from 
 import CalendarView, { ViewToggle } from '@/components/CalendarView'
 import CreateTaskModal from '@/components/CreateTaskModal'
 import DateDetailModal from '@/components/DateDetailModal'
-import ClientsWidget from '@/components/ClientsWidget'
+import NavigationSidebar from '@/components/NavigationSidebar'
 import { getRecurrenceDescription } from '@/lib/recurrence/utils'
 import type { Task, LogEntry, Status, Note } from '@/types/kanban'
 
@@ -705,8 +705,7 @@ export default function KanbanBoard() {
   const [isDateDetailModalOpen, setIsDateDetailModalOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'victor' | 'cyra'>('all')
-  const [taskTypeFilter, setTaskTypeFilter] = useState<'all' | 'client' | 'feature' | 'initiative' | 'event' | 'task'>('all')
-  const [clientFilter, setClientFilter] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   
   const supabase = createClient()
   const router = useRouter()
@@ -934,98 +933,41 @@ export default function KanbanBoard() {
         <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           
-          {/* Filters - Only show in Kanban view */}
+          {/* Assignee Filter - Only show in Kanban view */}
           {viewMode === 'kanban' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Assignee Filter */}
-              <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
-                <button
-                  onClick={() => setAssigneeFilter('all')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                    assigneeFilter === 'all'
-                      ? 'bg-cyan-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setAssigneeFilter('victor')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                    assigneeFilter === 'victor'
-                      ? 'bg-cyan-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  <span>👤</span>
-                  <span className="hidden sm:inline">Victor</span>
-                </button>
-                <button
-                  onClick={() => setAssigneeFilter('cyra')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
-                    assigneeFilter === 'cyra'
-                      ? 'bg-cyan-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  <span>🤖</span>
-                  <span className="hidden sm:inline">Cyra</span>
-                </button>
-              </div>
-              
-              {/* Task Type Filter */}
-              <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
-                <button
-                  onClick={() => setTaskTypeFilter('all')}
-                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    taskTypeFilter === 'all'
-                      ? 'bg-purple-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setTaskTypeFilter('client')}
-                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    taskTypeFilter === 'client'
-                      ? 'bg-purple-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  👔
-                </button>
-                <button
-                  onClick={() => setTaskTypeFilter('feature')}
-                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    taskTypeFilter === 'feature'
-                      ? 'bg-green-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  ⚙️
-                </button>
-                <button
-                  onClick={() => setTaskTypeFilter('initiative')}
-                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    taskTypeFilter === 'initiative'
-                      ? 'bg-orange-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  🎯
-                </button>
-                <button
-                  onClick={() => setTaskTypeFilter('event')}
-                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    taskTypeFilter === 'event'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-400 hover:text-slate-300'
-                  }`}
-                >
-                  📅
-                </button>
-              </div>
+            <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1">
+              <button
+                onClick={() => setAssigneeFilter('all')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                  assigneeFilter === 'all'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setAssigneeFilter('victor')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                  assigneeFilter === 'victor'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                <span>👤</span>
+                <span className="hidden sm:inline">Victor</span>
+              </button>
+              <button
+                onClick={() => setAssigneeFilter('cyra')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                  assigneeFilter === 'cyra'
+                    ? 'bg-cyan-600 text-white'
+                    : 'text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                <span>🤖</span>
+                <span className="hidden sm:inline">Cyra</span>
+              </button>
             </div>
           )}
           
@@ -1053,21 +995,21 @@ export default function KanbanBoard() {
 
       <div className="relative">
         {/* Main Content - Kanban or Calendar View */}
-        <div className={viewMode === 'kanban' ? 'lg:grid lg:grid-cols-12 lg:gap-6' : ''}>
-          {/* Clients Widget - Only in Kanban view */}
+        <div className={viewMode === 'kanban' ? 'lg:grid lg:grid-cols-12 lg:gap-4' : ''}>
+          {/* Navigation Sidebar - Only in Kanban view */}
           {viewMode === 'kanban' && (
-            <div className="lg:col-span-3 mb-6 lg:mb-0">
-              <ClientsWidget
+            <div className="lg:col-span-2 mb-6 lg:mb-0">
+              <NavigationSidebar
                 tasks={tasks}
-                selectedClientId={clientFilter}
-                onSelectClient={setClientFilter}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
                 userId={user?.id || ''}
               />
             </div>
           )}
           
           {/* Main content area */}
-          <div className={viewMode === 'kanban' ? 'lg:col-span-9' : ''}>
+          <div className={viewMode === 'kanban' ? 'lg:col-span-10' : ''}>
           {viewMode === 'calendar' ? (
             /* Calendar View */
             <CalendarView
@@ -1103,8 +1045,33 @@ export default function KanbanBoard() {
                   const columnTasks = tasks
                     .filter(t => t.column_id === column.id)
                     .filter(t => assigneeFilter === 'all' || t.assigned_to === assigneeFilter)
-                    .filter(t => taskTypeFilter === 'all' || t.task_type === taskTypeFilter || (!t.task_type && taskTypeFilter === 'task'))
-                    .filter(t => !clientFilter || t.client_id === clientFilter)
+                    .filter(t => {
+                      if (!selectedCategory) return true
+                      
+                      // Handle client filtering
+                      if (selectedCategory.startsWith('client:')) {
+                        const clientId = selectedCategory.replace('client:', '')
+                        return t.client_id === clientId
+                      }
+                      
+                      // Handle category filtering
+                      switch (selectedCategory) {
+                        case 'personal':
+                          return t.task_type === 'task' || !t.task_type
+                        case 'shopping':
+                          return t.title?.toLowerCase().includes('shopping') || t.description?.toLowerCase().includes('shopping')
+                        case 'openclaw':
+                          return t.product_id && t.product?.name?.toLowerCase().includes('openclaw')
+                        case 'housefly':
+                          return t.product_id && t.product?.name?.toLowerCase().includes('house fly')
+                        case 'initiative':
+                          return t.task_type === 'initiative'
+                        case 'event':
+                          return t.task_type === 'event'
+                        default:
+                          return true
+                      }
+                    })
                   return (
                     <div
                       key={column.id}
