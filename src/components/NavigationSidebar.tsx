@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, memo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Task } from '@/types/kanban'
 
@@ -77,6 +77,11 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return categoryCounts[categoryType as keyof typeof categoryCounts] || 0
   }
 
+  // Stable click handler to prevent re-renders from interfering with clicks
+  const handleCategoryClick = useCallback((id: string) => {
+    onSelectCategory(selectedCategory === id ? null : id)
+  }, [selectedCategory, onSelectCategory])
+
   const CategoryButton = ({ 
     id, 
     label, 
@@ -94,7 +99,11 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     
     return (
       <button
-        onClick={() => onSelectCategory(isSelected ? null : id)}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          handleCategoryClick(id)
+        }}
         className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-150 flex items-center justify-between ${
           isSelected
             ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
