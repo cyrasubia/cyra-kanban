@@ -98,7 +98,7 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
         className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-150 flex items-center justify-between ${
           isSelected
             ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
-            : 'hover:bg-slate-800 text-slate-300 border border-transparent'
+            : 'text-slate-300 border border-transparent'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0">
