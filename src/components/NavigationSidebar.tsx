@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Task } from '@/types/kanban'
 
@@ -20,6 +20,48 @@ interface NavigationSidebarProps {
 }
 
 type CategoryType = 'client' | 'personal' | 'openclaw' | 'housefly' | 'initiative' | 'event' | 'insiderclicks' | 'insiderclicks-business' | 'victoryhomebuyers'
+
+// Individual category button component - defined outside to prevent re-creation
+function CategoryButton({ 
+  id, 
+  label, 
+  icon, 
+  count, 
+  isSelected,
+  onClick
+}: { 
+  id: string
+  label: string
+  icon: string
+  count: number
+  isSelected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-150 flex items-center justify-between ${
+        isSelected
+          ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
+          : 'text-slate-300 border border-transparent hover:bg-slate-800'
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-sm flex-shrink-0">{icon}</span>
+        <span className="text-xs font-medium truncate">{label}</span>
+      </div>
+      {count > 0 && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
+          isSelected
+            ? 'bg-cyan-500/30 text-cyan-200'
+            : 'bg-slate-700 text-slate-400'
+        }`}>
+          {count}
+        </span>
+      )}
+    </button>
+  )
+}
 
 export default function NavigationSidebar({ tasks, selectedCategory, onSelectCategory, userId }: NavigationSidebarProps) {
   const [clients, setClients] = useState<Client[]>([])
@@ -77,54 +119,10 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
     return categoryCounts[categoryType as keyof typeof categoryCounts] || 0
   }
 
-  // Stable click handler to prevent re-renders from interfering with clicks
-  const handleCategoryClick = useCallback((id: string) => {
+  // Simple click handler - no useCallback needed for simple state updates
+  const handleCategoryClick = (id: string) => {
+    // Toggle: if already selected, clear it; otherwise select it
     onSelectCategory(selectedCategory === id ? null : id)
-  }, [selectedCategory, onSelectCategory])
-
-  const CategoryButton = ({ 
-    id, 
-    label, 
-    icon, 
-    count, 
-    type 
-  }: { 
-    id: string
-    label: string
-    icon: string
-    count: number
-    type?: 'client' | 'category'
-  }) => {
-    const isSelected = selectedCategory === id
-    
-    return (
-      <button
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          handleCategoryClick(id)
-        }}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-150 flex items-center justify-between ${
-          isSelected
-            ? 'bg-cyan-600/20 border border-cyan-500/50 text-cyan-300'
-            : 'text-slate-300 border border-transparent'
-        }`}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm flex-shrink-0">{icon}</span>
-          <span className="text-xs font-medium truncate">{label}</span>
-        </div>
-        {count > 0 && (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${
-            isSelected
-              ? 'bg-cyan-500/30 text-cyan-200'
-              : 'bg-slate-700 text-slate-400'
-          }`}>
-            {count}
-          </span>
-        )}
-      </button>
-    )
   }
 
   if (loading) {
@@ -158,21 +156,24 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
             label="Personal"
             icon="👤"
             count={getCategoryCount('personal')}
-            type="category"
+            isSelected={selectedCategory === 'personal'}
+            onClick={() => handleCategoryClick('personal')}
           />
           <CategoryButton
             id="initiative"
             label="Initiatives"
             icon="🎯"
             count={getCategoryCount('initiative')}
-            type="category"
+            isSelected={selectedCategory === 'initiative'}
+            onClick={() => handleCategoryClick('initiative')}
           />
           <CategoryButton
             id="event"
             label="Events"
             icon="📅"
             count={getCategoryCount('event')}
-            type="category"
+            isSelected={selectedCategory === 'event'}
+            onClick={() => handleCategoryClick('event')}
           />
         </div>
       </div>
@@ -188,35 +189,40 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
             label="IC (Clients)"
             icon="💼"
             count={getCategoryCount('insiderclicks')}
-            type="category"
+            isSelected={selectedCategory === 'insiderclicks'}
+            onClick={() => handleCategoryClick('insiderclicks')}
           />
           <CategoryButton
             id="insiderclicks-business"
             label="IC Marketing"
             icon="🏢"
             count={getCategoryCount('insiderclicks-business')}
-            type="category"
+            isSelected={selectedCategory === 'insiderclicks-business'}
+            onClick={() => handleCategoryClick('insiderclicks-business')}
           />
           <CategoryButton
             id="victoryhomebuyers"
             label="Victory Home Buyers"
             icon="🏘️"
             count={getCategoryCount('victoryhomebuyers')}
-            type="category"
+            isSelected={selectedCategory === 'victoryhomebuyers'}
+            onClick={() => handleCategoryClick('victoryhomebuyers')}
           />
           <CategoryButton
             id="housefly"
             label="House Fly"
             icon="🏠"
             count={getCategoryCount('housefly')}
-            type="category"
+            isSelected={selectedCategory === 'housefly'}
+            onClick={() => handleCategoryClick('housefly')}
           />
           <CategoryButton
             id="openclaw"
             label="OpenClaw"
             icon="🤖"
             count={getCategoryCount('openclaw')}
-            type="category"
+            isSelected={selectedCategory === 'openclaw'}
+            onClick={() => handleCategoryClick('openclaw')}
           />
         </div>
       </div>
@@ -237,7 +243,8 @@ export default function NavigationSidebar({ tasks, selectedCategory, onSelectCat
                 label={client.name}
                 icon="👔"
                 count={getCategoryCount('client', client.id)}
-                type="client"
+                isSelected={selectedCategory === `client:${client.id}`}
+                onClick={() => handleCategoryClick(`client:${client.id}`)}
               />
             ))
           )}
