@@ -28,7 +28,7 @@ type CyraAction =
   | { action: 'add_log'; log_action: string; details?: string; task_id?: string }
   | { action: 'update_task'; task_id: string; title?: string; description?: string; priority?: 'low' | 'medium' | 'high'; event_date?: string; assigned_to?: 'victor' | 'cyra' }
   | { action: 'delete_task'; task_id: string }
-  | { action: 'add_client'; name: string; description?: string; status?: 'active' | 'inactive' }
+  | { action: 'add_client'; name: string; status?: 'active' | 'inactive' }
 
 function validateApiKey(request: NextRequest): boolean {
   const authHeader = request.headers.get('Authorization')
@@ -373,7 +373,6 @@ export async function POST(request: NextRequest) {
           .insert({
             user_id: userId,
             name: body.name,
-            description: body.description || null,
             status: body.status || 'active'
           })
           .select()
@@ -384,8 +383,7 @@ export async function POST(request: NextRequest) {
         // Log the action
         await supabase.from('logs').insert({
           user_id: userId,
-          action: `Added client: ${body.name}`,
-          details: body.description
+          action: `Added client: ${body.name}`
         })
         
         return NextResponse.json({ success: true, client })
